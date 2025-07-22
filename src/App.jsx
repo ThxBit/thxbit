@@ -1,9 +1,9 @@
-import Switcher2 from "./components/Switcher/Switcher2";
+import TradingUI from "./components/TradingUI";
 
 function App() {
   return (
     <>
-      <Switcher2 />
+      <TradingUI />
     </>
   );
 }
