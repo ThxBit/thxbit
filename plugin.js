@@ -135,9 +135,9 @@ module.exports = plugin(
       /* v-2.0 start from here */
       [`.container`]: {
         marginLeft: "auto",
-        marginRIght: "auto",
+        marginRight: "auto",
         paddingLeft: "16px",
-        paddingRIght: "16px",
+        paddingRight: "16px",
       },
 
       [`input[type="checkbox"]:checked ~ .box span`]: {
