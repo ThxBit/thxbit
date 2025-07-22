@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "react-scripts start",
-    "build-lib": "rollup -c"
+    "build-lib": "rollup -c",
+    "start": "node server/index.js"
   },
   "author": "TailGrids Team <hello@tailgrids.com> (https://tailgrids.com/)",
   "homepage": "https://tailgrids.com/",
@@ -64,9 +65,17 @@
   },
   "version": "2.2.3",
   "dependencies": {
+    "axios": "^1.10.0",
+    "bybit-api": "^4.1.17",
+    "chart.js": "^4.5.0",
+    "chartjs-chart-financial": "^0.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
     "prettier": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.6",
-    "react-scripts": "^5.0.1"
+    "react-scripts": "^5.0.1",
+    "technicalindicators": "^3.1.0"
   },
   "browserslist": {
     "production": [
