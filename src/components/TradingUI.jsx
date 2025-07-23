@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Button } from "../ui/button";
 
 const TradingUI = () => {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -81,12 +82,9 @@ const TradingUI = () => {
               placeholder="Password"
               className="w-full rounded border px-3 py-2 focus:outline-none"
             />
-            <button
-              type="submit"
-              className="w-full rounded bg-primary py-2 text-white hover:bg-primary/90"
-            >
+            <Button type="submit" className="w-full">
               시작하기
-            </button>
+            </Button>
           </form>
           <div>
             <h3 className="mb-2 text-lg font-semibold">예측 수익률</h3>
@@ -139,12 +137,9 @@ const TradingUI = () => {
               className="w-full rounded border px-3 py-2 focus:outline-none"
             />
           </div>
-          <button
-            onClick={toggleTrading}
-            className="w-full rounded bg-primary py-2 text-white hover:bg-primary/90"
-          >
+          <Button onClick={toggleTrading} className="w-full">
             {trading ? "트레이딩 중지" : "트레이딩 시작"}
-          </button>
+          </Button>
         </div>
       )}
     </div>
