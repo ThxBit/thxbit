@@ -20,19 +20,22 @@ export class BybitService {
 
   constructor(config: BybitConfig = {}) {
     this.config = {
-      apiKey: process.env.NEXT_PUBLIC_BYBIT_API_KEY || config.apiKey,
-      apiSecret: process.env.NEXT_PUBLIC_BYBIT_API_SECRET || config.apiSecret,
-      testnet:
-        config.testnet ?? (process.env.NEXT_PUBLIC_BYBIT_TESTNET === 'true'),
-      simulationMode: config.simulationMode,
-    }
-    console.log("test"+config.testnet);
-    this.isSimulation = this.config.simulationMode ?? false
-
-    if (!this.isSimulation && this.config.apiKey && this.config.apiSecret) {
-      this.initializeClients()
-    }
+    apiKey: process.env.NEXT_PUBLIC_BYBIT_API_KEY || config.apiKey,
+    apiSecret: process.env.NEXT_PUBLIC_BYBIT_API_SECRET || config.apiSecret,
+    testnet:
+      config.testnet ?? (process.env.NEXT_PUBLIC_BYBIT_TESTNET === 'true'),
+    simulationMode: config.simulationMode,
   }
+
+  this.isSimulation = this.config.simulationMode ?? false
+
+  console.log("Final config:", this.config);
+
+  if (!this.isSimulation && this.config.apiKey && this.config.apiSecret) {
+    this.initializeClients()
+  }
+  }
+
 
   /** Update API credentials and reinitialize clients if not in simulation mode */
   setCredentials(apiKey: string, apiSecret: string, testnet = false) {
@@ -42,7 +45,6 @@ export class BybitService {
       apiSecret,
       testnet,
     }
-    console.log("testNet " + testnet);
     if (!this.isSimulation) {
       this.initializeClients()
     }

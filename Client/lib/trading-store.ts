@@ -41,7 +41,7 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   // Initial state
   apiKey: "",
   apiSecret: "",
-  isTestnet: true,
+  isTestnet: false,
   isSimulationMode: true,
   tickers: {},
   orderbooks: {},

@@ -81,13 +81,36 @@ app.get('/api/orderbook', async (req, res) => {
 });
 
 // Validate API credentials by attempting a private request
+// app.post('/api/validate', async (req, res) => {
+//   const { apiKey, apiSecret, testnet = false } = req.body;
+//   console.log("Sent to server:", { apiKey, apiSecret, testnet });
+
+//   const client = new RestClientV5({ key: apiKey, secret: apiSecret, testnet });
+//   try {
+//     await client.getWalletBalance({ accountType: 'UNIFIED' });
+//     console.log("Calling:", `${SERVER_URL}/api/validate`)
+
+//     console.log('API credentials validated successfully');
+//     res.json({ valid: true });
+//   } catch (err) {
+//     console.log('API credential validation failed:', err.message);
+//     res.status(400).json({ valid: false, error: err.message });
+//   }
+// });
 app.post('/api/validate', async (req, res) => {
-  const { apiKey, apiSecret, testnet = false } = req.body;
-  const client = new RestClientV5({ key: apiKey, secret: apiSecret, testnet });
+  const { apiKey, apiSecret, testnet } = req.body;
+  const isTestnet = testnet === true || testnet === 'true';
+
+  console.log('Received validate request:', { apiKey, testnet, isTestnet });
+
+  const client = new RestClientV5({
+    key: apiKey,
+    secret: apiSecret,
+    testnet: isTestnet,
+  });
+
   try {
     await client.getWalletBalance({ accountType: 'UNIFIED' });
-    console.log("Calling:", `${SERVER_URL}/api/validate`)
-
     console.log('API credentials validated successfully');
     res.json({ valid: true });
   } catch (err) {
