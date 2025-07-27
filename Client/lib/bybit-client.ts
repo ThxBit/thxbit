@@ -16,16 +16,44 @@ export class BybitService {
   private isSimulation: boolean
 
   constructor(config: BybitConfig = {}) {
-    this.config = config
-    this.isSimulation = config.simulationMode ?? true
+    this.config = {
+      apiKey: process.env.NEXT_PUBLIC_BYBIT_API_KEY || config.apiKey,
+      apiSecret: process.env.NEXT_PUBLIC_BYBIT_API_SECRET || config.apiSecret,
+      testnet:
+        config.testnet ?? (process.env.NEXT_PUBLIC_BYBIT_TESTNET === 'true'),
+      simulationMode: config.simulationMode,
+    }
+    this.isSimulation = this.config.simulationMode ?? true
 
-    if (!this.isSimulation && config.apiKey && config.apiSecret) {
+    if (!this.isSimulation && this.config.apiKey && this.config.apiSecret) {
+      this.initializeClients()
+    }
+  }
+
+  /** Update API credentials and reinitialize clients if not in simulation mode */
+  setCredentials(apiKey: string, apiSecret: string, testnet = true) {
+    this.config = {
+      ...this.config,
+      apiKey,
+      apiSecret,
+      testnet,
+    }
+    if (!this.isSimulation) {
       this.initializeClients()
     }
   }
 
   private initializeClients() {
     try {
+      // Clean up previous clients if they exist
+      if (this.wsClient) {
+        try {
+          this.wsClient.closeAll?.()
+        } catch (e) {
+          console.warn("Failed to close existing websocket client", e)
+        }
+      }
+
       this.restClient = new RestClientV5({
         key: this.config.apiKey,
         secret: this.config.apiSecret,
@@ -151,7 +179,10 @@ export class BybitService {
     }
 
     try {
-      if (!this.wsClient) throw new Error("WebSocket client not initialized")
+      if (!this.wsClient) {
+        this.initializeClients()
+        if (!this.wsClient) throw new Error("WebSocket client not initialized")
+      }
 
       this.wsClient.subscribe(
         symbols.map((symbol) => `tickers.${symbol}`),
@@ -178,7 +209,10 @@ export class BybitService {
     }
 
     try {
-      if (!this.wsClient) throw new Error("WebSocket client not initialized")
+      if (!this.wsClient) {
+        this.initializeClients()
+        if (!this.wsClient) throw new Error("WebSocket client not initialized")
+      }
 
       this.wsClient.subscribe([`orderbook.25.${symbol}`], "v5")
       this.wsClient.on("update", callback)
@@ -304,6 +338,15 @@ export class BybitService {
     this.isSimulation = enabled
     if (!enabled && this.config.apiKey && this.config.apiSecret) {
       this.initializeClients()
+    } else if (enabled) {
+      // when switching back to simulation, clean up live clients
+      try {
+        this.wsClient?.closeAll?.()
+      } catch (e) {
+        console.warn("Failed to close websocket client", e)
+      }
+      this.wsClient = null
+      this.restClient = null
     }
   }
 
