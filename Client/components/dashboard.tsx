@@ -9,7 +9,8 @@ import { TrendingUp, LogOut, Bot, Wallet, Activity, Target } from "lucide-react"
 import { ProfitChart } from "@/components/profit-chart"
 import { TradingStrategies } from "@/components/trading-strategies"
 import { RecentTrades } from "@/components/recent-trades"
-import { LiveTrading } from "@/components/live-trading"
+import { ApiSettings } from "@/components/api-settings"
+import { EnhancedLiveTrading } from "@/components/enhanced-live-trading"
 
 interface DashboardProps {
   user: { name: string; email: string } | null
@@ -158,28 +159,11 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
           </TabsContent>
 
           <TabsContent value="live-trading">
-            <LiveTrading />
+            <EnhancedLiveTrading />
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>API 설정</CardTitle>
-                <CardDescription>Bybit API 키를 설정하여 실제 거래를 시작하세요</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ 현재 시뮬레이션 모드로 실행 중입니다. 실제 거래를 위해서는 API 키 설정이 필요합니다.
-                    </p>
-                  </div>
-                  <Button className="w-full" disabled>
-                    API 키 설정 (준비 중)
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ApiSettings />
           </TabsContent>
         </Tabs>
       </main>
