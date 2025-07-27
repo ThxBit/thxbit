@@ -24,8 +24,10 @@ interface TradingState {
   isConnected: boolean
   error: string | null
 
+  isCheckingCredentials: boolean
+
   // Actions
-  setApiCredentials: (apiKey: string, apiSecret: string) => void
+  setApiCredentials: (apiKey: string, apiSecret: string) => Promise<void>
   toggleSimulationMode: () => void
   setSelectedSymbol: (symbol: string) => void
   updateTicker: (symbol: string, data: any) => void
@@ -48,12 +50,20 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   orders: [],
   selectedSymbol: "BTCUSDT",
   isConnected: false,
+  isCheckingCredentials: false,
   error: null,
 
   // Actions
-  setApiCredentials: (apiKey: string, apiSecret: string) => {
-    set({ apiKey, apiSecret })
+  setApiCredentials: async (apiKey: string, apiSecret: string) => {
+    set({ apiKey, apiSecret, isCheckingCredentials: true })
     bybitService.setCredentials(apiKey, apiSecret, get().isTestnet)
+
+    try {
+      await bybitService.validateCredentials(apiKey, apiSecret, get().isTestnet)
+      set({ isConnected: true, isCheckingCredentials: false, error: null })
+    } catch (err) {
+      set({ isConnected: false, isCheckingCredentials: false, error: err instanceof Error ? err.message : 'Invalid credentials' })
+    }
   },
 
   toggleSimulationMode: () => {

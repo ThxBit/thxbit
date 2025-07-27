@@ -46,6 +46,25 @@ export class BybitService {
     }
   }
 
+  /** Validate that the provided credentials can make authenticated requests */
+  async validateCredentials(apiKey: string, apiSecret: string, testnet = true) {
+    try {
+      const res = await fetch('/api/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, apiSecret, testnet }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.valid) {
+        throw new Error(data.error || 'Invalid credentials')
+      }
+      return true
+    } catch (err) {
+      console.error('API credential validation failed:', err)
+      throw err
+    }
+  }
+
   private initializeClients() {
     try {
       // Clean up previous clients if they exist
