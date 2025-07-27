@@ -184,17 +184,17 @@ export class BybitService {
         if (!this.wsClient) throw new Error("WebSocket client not initialized")
       }
 
-      this.wsClient.subscribe(
+      this.wsClient.subscribeV5(
         symbols.map((symbol) => `tickers.${symbol}`),
-        "v5",
+        "linear",
       )
 
       this.wsClient.on("update", callback)
 
       return () => {
-        this.wsClient?.unsubscribe(
+        this.wsClient?.unsubscribeV5(
           symbols.map((symbol) => `tickers.${symbol}`),
-          "v5",
+          "linear",
         )
       }
     } catch (error) {
@@ -214,11 +214,11 @@ export class BybitService {
         if (!this.wsClient) throw new Error("WebSocket client not initialized")
       }
 
-      this.wsClient.subscribe([`orderbook.25.${symbol}`], "v5")
+      this.wsClient.subscribeV5([`orderbook.25.${symbol}`], "linear")
       this.wsClient.on("update", callback)
 
       return () => {
-        this.wsClient?.unsubscribe([`orderbook.25.${symbol}`], "v5")
+        this.wsClient?.unsubscribeV5([`orderbook.25.${symbol}`], "linear")
       }
     } catch (error) {
       console.error("Error subscribing to orderbook:", error)
