@@ -1,4 +1,6 @@
-require('dotenv').config();
+const path = require('path');
+// Always load env variables from the project root
+require('dotenv').config({ path: path.resolve(__dirname, '../..', '.env') });
 const express = require('express');
 const cors = require('cors');
 const { RestClientV5 } = require('bybit-api');
