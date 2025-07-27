@@ -53,13 +53,7 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   // Actions
   setApiCredentials: (apiKey: string, apiSecret: string) => {
     set({ apiKey, apiSecret })
-    bybitService.config = {
-      ...bybitService.config,
-      apiKey,
-      apiSecret,
-      testnet: get().isTestnet,
-      simulationMode: get().isSimulationMode,
-    }
+    bybitService.setCredentials(apiKey, apiSecret, get().isTestnet)
   },
 
   toggleSimulationMode: () => {

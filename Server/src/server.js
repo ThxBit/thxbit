@@ -54,6 +54,32 @@ app.get('/api/positions', async (req, res) => {
   }
 });
 
+app.get('/api/ticker', async (req, res) => {
+  try {
+    const { symbol = 'BTCUSDT', category = 'linear' } = req.query;
+    const result = await restClient.getTickers({ category, symbol });
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching ticker:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/orderbook', async (req, res) => {
+  try {
+    const { symbol = 'BTCUSDT', category = 'linear', limit = 25 } = req.query;
+    const result = await restClient.getOrderbook({
+      category,
+      symbol,
+      limit: parseInt(limit, 10),
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching orderbook:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/order', async (req, res) => {
   try {
     const { symbol, side, orderType = 'Market', qty, price, leverage, positionIdx } = req.body;
