@@ -26,7 +26,8 @@ export class BybitService {
         config.testnet ?? (process.env.NEXT_PUBLIC_BYBIT_TESTNET === 'true'),
       simulationMode: config.simulationMode,
     }
-    this.isSimulation = this.config.simulationMode ?? true
+    console.log("test"+config.testnet);
+    this.isSimulation = this.config.simulationMode ?? false
 
     if (!this.isSimulation && this.config.apiKey && this.config.apiSecret) {
       this.initializeClients()
@@ -34,22 +35,23 @@ export class BybitService {
   }
 
   /** Update API credentials and reinitialize clients if not in simulation mode */
-  setCredentials(apiKey: string, apiSecret: string, testnet = true) {
+  setCredentials(apiKey: string, apiSecret: string, testnet = false) {
     this.config = {
       ...this.config,
       apiKey,
       apiSecret,
       testnet,
     }
+    console.log("testNet " + testnet);
     if (!this.isSimulation) {
       this.initializeClients()
     }
   }
 
   /** Validate that the provided credentials can make authenticated requests */
-  async validateCredentials(apiKey: string, apiSecret: string, testnet = true) {
+  async validateCredentials(apiKey: string, apiSecret: string, testnet = false) {
     try {
-      const res = await fetch('/api/validate', {
+      const res = await fetch(`${SERVER_URL}/api/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey, apiSecret, testnet }),
