@@ -2,6 +2,9 @@
 
 import { RestClientV5, WebsocketClient } from "bybit-api"
 
+const SERVER_URL =
+  process.env.NEXT_PUBLIC_TRADING_SERVER || "http://localhost:4000"
+
 export interface BybitConfig {
   apiKey?: string
   apiSecret?: string
@@ -77,13 +80,13 @@ export class BybitService {
     }
 
     try {
-      if (!this.restClient) throw new Error("REST client not initialized")
-
-      const response = await this.restClient.getWalletBalance({
-        accountType: "UNIFIED",
-      })
-
-      return response.result
+      const res = await fetch(`${SERVER_URL}/api/balance`)
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
     } catch (error) {
       console.error("Error fetching account balance:", error)
       throw error
@@ -96,13 +99,13 @@ export class BybitService {
     }
 
     try {
-      if (!this.restClient) throw new Error("REST client not initialized")
-
-      const response = await this.restClient.getPositionInfo({
-        category: "linear",
-      })
-
-      return response.result?.list || []
+      const res = await fetch(`${SERVER_URL}/api/positions`)
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result?.list || []
     } catch (error) {
       console.error("Error fetching positions:", error)
       throw error
@@ -123,29 +126,17 @@ export class BybitService {
     }
 
     try {
-      if (!this.restClient) throw new Error("REST client not initialized")
-
-      // Set leverage first if specified
-      if (orderParams.leverage) {
-        await this.restClient.setLeverage({
-          category: "linear",
-          symbol: orderParams.symbol,
-          buyLeverage: orderParams.leverage.toString(),
-          sellLeverage: orderParams.leverage.toString(),
-        })
-      }
-
-      const response = await this.restClient.submitOrder({
-        category: "linear",
-        symbol: orderParams.symbol,
-        side: orderParams.side,
-        orderType: orderParams.orderType,
-        qty: orderParams.qty,
-        price: orderParams.price,
-        positionIdx: orderParams.positionIdx || 0,
+      const res = await fetch(`${SERVER_URL}/api/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderParams),
       })
-
-      return response.result
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
     } catch (error) {
       console.error("Error placing order:", error)
       throw error
