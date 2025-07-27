@@ -80,6 +80,20 @@ app.get('/api/orderbook', async (req, res) => {
   }
 });
 
+// Validate API credentials by attempting a private request
+app.post('/api/validate', async (req, res) => {
+  const { apiKey, apiSecret, testnet = true } = req.body;
+  const client = new RestClientV5({ key: apiKey, secret: apiSecret, testnet });
+  try {
+    await client.getWalletBalance({ accountType: 'UNIFIED' });
+    console.log('API credentials validated successfully');
+    res.json({ valid: true });
+  } catch (err) {
+    console.log('API credential validation failed:', err.message);
+    res.status(400).json({ valid: false, error: err.message });
+  }
+});
+
 app.post('/api/order', async (req, res) => {
   try {
     const { symbol, side, orderType = 'Market', qty, price, leverage, positionIdx } = req.body;

@@ -18,6 +18,7 @@ export function ApiSettings() {
     isTestnet,
     isSimulationMode,
     isConnected,
+    isCheckingCredentials,
     error,
     setApiCredentials,
     toggleSimulationMode,
@@ -103,6 +104,9 @@ export function ApiSettings() {
                 <Shield className="h-4 w-4 mr-2" />
                 API 키 저장
               </Button>
+              {isCheckingCredentials && (
+                <p className="text-sm text-muted-foreground mt-2">API 키 확인 중...</p>
+              )}
             </div>
           )}
 
@@ -115,7 +119,13 @@ export function ApiSettings() {
                 <AlertTriangle className="h-5 w-5 text-yellow-600" />
               )}
               <div>
-                <p className="font-medium">{isConnected ? "연결됨" : "연결 안됨"}</p>
+                <p className="font-medium">
+                  {isCheckingCredentials
+                    ? "확인 중"
+                    : isConnected
+                    ? "연결됨"
+                    : "연결 안됨"}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {isSimulationMode ? "시뮬레이션 모드" : isTestnet ? "테스트넷" : "메인넷"}
                 </p>
