@@ -18,7 +18,9 @@
     "pack": "webpack --config webpack/webpack.config.js",
     "prepublish": "npm run build:clean",
     "betapublish": "npm publish --tag beta",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
   },
   "author": "Tiago Siebler (https://github.com/tiagosiebler)",
   "contributors": [],
