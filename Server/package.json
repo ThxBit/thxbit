@@ -18,12 +18,18 @@
     "pack": "webpack --config webpack/webpack.config.js",
     "prepublish": "npm run build:clean",
     "betapublish": "npm publish --tag beta",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
   },
   "author": "Tiago Siebler (https://github.com/tiagosiebler)",
   "contributors": [],
   "dependencies": {
     "axios": "^1.7.9",
+    "bybit-api": "^4.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
     "isomorphic-ws": "^4.0.1",
     "ws": "^7.4.0"
   },
