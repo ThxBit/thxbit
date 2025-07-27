@@ -19,7 +19,7 @@
     "prepublish": "npm run build:clean",
     "betapublish": "npm publish --tag beta",
     "lint": "eslint src",
-    "start": "cd .. && node Server/src/Server.js",
+    "start": "node src/server.js",
     "dev": "node src/server.js"
   },
   "author": "Tiago Siebler (https://github.com/tiagosiebler)",
