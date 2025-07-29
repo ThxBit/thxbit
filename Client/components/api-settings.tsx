@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,22 @@ export function ApiSettings() {
   const [localApiKey, setLocalApiKey] = useState(apiKey)
   const [localApiSecret, setLocalApiSecret] = useState(apiSecret)
   const [showSecrets, setShowSecrets] = useState(false)
+
+  // Sync local input state with persisted store values
+  useEffect(() => {
+    setLocalApiKey(apiKey)
+  }, [apiKey])
+
+  useEffect(() => {
+    setLocalApiSecret(apiSecret)
+  }, [apiSecret])
+
+  // Re-validate credentials on mount when they exist
+  useEffect(() => {
+    if (apiKey && apiSecret && !isSimulationMode && !isConnected && !isCheckingCredentials) {
+      setApiCredentials(apiKey, apiSecret)
+    }
+  }, [apiKey, apiSecret, isSimulationMode])
 
   const handleSaveCredentials = () => {
     setApiCredentials(localApiKey, localApiSecret)
@@ -72,9 +88,11 @@ export function ApiSettings() {
                 <div className="relative">
                   <Input
                     id="apiKey"
+                    name="api-key"
                     type={showSecrets ? "text" : "password"}
                     placeholder="Bybit API Key 입력"
                     value={localApiKey}
+                    autoComplete="new-password"
                     onChange={(e) => setLocalApiKey(e.target.value)}
                   />
                   <Button
@@ -93,9 +111,11 @@ export function ApiSettings() {
                 <Label htmlFor="apiSecret">API Secret</Label>
                 <Input
                   id="apiSecret"
+                  name="api-secret"
                   type={showSecrets ? "text" : "password"}
                   placeholder="Bybit API Secret 입력"
                   value={localApiSecret}
+                  autoComplete="new-password"
                   onChange={(e) => setLocalApiSecret(e.target.value)}
                 />
               </div>

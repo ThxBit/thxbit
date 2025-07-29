@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { bybitService } from "./bybit-client";
 
 interface TradingState {
@@ -37,7 +38,9 @@ interface TradingState {
   setError: (error: string | null) => void;
 }
 
-export const useTradingStore = create<TradingState>((set, get) => ({
+export const useTradingStore = create<TradingState>()(
+  persist(
+    (set, get) => ({
   // Initial state
   apiKey: "",
   apiSecret: "",
@@ -133,4 +136,16 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   setError: (error: string | null) => {
     set({ error });
   },
-}));
+    }),
+    {
+      name: "trading-store",
+      partialize: (state) => ({
+        apiKey: state.apiKey,
+        apiSecret: state.apiSecret,
+        isTestnet: state.isTestnet,
+        isSimulationMode: state.isSimulationMode,
+        selectedSymbol: state.selectedSymbol,
+      }),
+    },
+  ),
+);
