@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +29,7 @@ export function EnhancedLiveTrading() {
     tickers,
     isSimulationMode,
     isConnected,
+    balance,
     error,
     setSelectedSymbol,
     updateTicker,
@@ -75,6 +76,36 @@ export function EnhancedLiveTrading() {
   const currentTicker = tickers[selectedSymbol]
   const currentPrice = currentTicker?.lastPrice ? Number.parseFloat(currentTicker.lastPrice) : 0
   const priceChange = currentTicker?.price24hPcnt ? Number.parseFloat(currentTicker.price24hPcnt) : 0
+
+  const availableBalance = useMemo(() => {
+    if (!balance) return 0
+    if (typeof balance.totalAvailableBalance === 'string') {
+      return Number.parseFloat(balance.totalAvailableBalance)
+    }
+    const list = balance.list || balance.result?.list
+    const item = Array.isArray(list) ? list[0] : null
+    if (item && typeof item.totalAvailableBalance === 'string') {
+      return Number.parseFloat(item.totalAvailableBalance)
+    }
+    const coins = item?.coin || balance.coin
+    if (Array.isArray(coins)) {
+      const usdt = coins.find((c: any) => c.coin === 'USDT')
+      if (usdt?.availableToWithdraw) {
+        return Number.parseFloat(usdt.availableToWithdraw)
+      }
+      if (usdt?.walletBalance) {
+        return Number.parseFloat(usdt.walletBalance)
+      }
+    }
+    return 0
+  }, [balance])
+
+  // Pre-fill limit order price with current market price when available
+  useEffect(() => {
+    if (orderType === 'Limit' && currentPrice > 0 && price === '') {
+      setPrice(currentPrice.toString())
+    }
+  }, [orderType, currentPrice, selectedSymbol, price])
 
   const handlePlaceOrder = async () => {
     if (!amount || (orderType === "Limit" && !price)) {
@@ -259,13 +290,37 @@ export function EnhancedLiveTrading() {
 
               {/* Quantity */}
               <div className="space-y-2">
-                <Label>수량</Label>
+                <div className="flex justify-between">
+                  <Label>수량</Label>
+                  <span className="text-xs text-muted-foreground">
+                    잔액: {availableBalance.toFixed(2)} USDT
+                  </span>
+                </div>
                 <Input
                   type="number"
                   placeholder="수량 입력"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />
+                <div className="grid grid-cols-4 gap-1">
+                  {[10, 25, 50, 100].map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        if (currentPrice > 0) {
+                          const qty =
+                            ((availableBalance * (p / 100) * Number.parseFloat(leverage)) / currentPrice).toFixed(4)
+                          setAmount(qty)
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      {p}%
+                    </Button>
+                  ))}
+                </div>
               </div>
 
               {/* Order Button */}
