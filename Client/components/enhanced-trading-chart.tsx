@@ -22,6 +22,75 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, BarChart3, LineChart } from "lucide-react";
 
+function formatTime(ts: number, tf: string) {
+  const d = new Date(ts)
+  if (tf === '1d') {
+    return d.toLocaleDateString('ko-KR')
+  }
+  return d.toLocaleTimeString('ko-KR', { hour12: false })
+}
+
+function calculateIndicators(data: ChartData[]) {
+  const closes = data.map((d) => d.close)
+  const rsiPeriod = 14
+  const bbPeriod = 20
+  const emaShortPeriod = 12
+  const emaLongPeriod = 26
+  const signalPeriod = 9
+
+  let emaShort = closes[0]
+  let emaLong = closes[0]
+  let emaSignal = 0
+  for (let i = 0; i < data.length; i++) {
+    const close = closes[i]
+
+    // RSI
+    if (i > 0) {
+      let gains = 0
+      let losses = 0
+      const start = Math.max(0, i - rsiPeriod + 1)
+      for (let j = start + 1; j <= i; j++) {
+        const diff = closes[j] - closes[j - 1]
+        if (diff >= 0) gains += diff
+        else losses -= diff
+      }
+      const avgGain = gains / Math.min(i, rsiPeriod)
+      const avgLoss = losses / Math.min(i, rsiPeriod)
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss
+      data[i].rsi = 100 - 100 / (1 + rs)
+    } else {
+      data[i].rsi = 50
+    }
+
+    // Bollinger Bands
+    const bbStart = Math.max(0, i - bbPeriod + 1)
+    const slice = closes.slice(bbStart, i + 1)
+    const mean = slice.reduce((a, b) => a + b, 0) / slice.length
+    const std = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / slice.length)
+    data[i].bb_middle = mean
+    data[i].bb_upper = mean + 2 * std
+    data[i].bb_lower = mean - 2 * std
+
+    // MACD
+    if (i === 0) {
+      emaShort = close
+      emaLong = close
+      emaSignal = 0
+    } else {
+      const kShort = 2 / (emaShortPeriod + 1)
+      const kLong = 2 / (emaLongPeriod + 1)
+      emaShort = close * kShort + emaShort * (1 - kShort)
+      emaLong = close * kLong + emaLong * (1 - kLong)
+    }
+    const macd = emaShort - emaLong
+    const kSignal = 2 / (signalPeriod + 1)
+    emaSignal = macd * kSignal + emaSignal * (1 - kSignal)
+    data[i].macd = macd
+    data[i].macd_signal = emaSignal
+    data[i].macd_histogram = macd - emaSignal
+  }
+}
+
 interface ChartData {
   time: string;
   timestamp: number;
@@ -59,6 +128,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
   const [gptAnswer, setGptAnswer] = useState<string | null>(null);
   const [isAsking, setIsAsking] = useState(false);
   const lastValidPrice = useRef(0);
+  const [loading, setLoading] = useState(false);
 
   const currentTicker = tickers[symbol];
   const currentPrice = currentTicker?.lastPrice
@@ -76,97 +146,108 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     }
   }, [currentPrice]);
 
-  // Generate enhanced chart data whenever the symbol changes
+  // Fetch historical chart data when symbol or timeframe changes
   useEffect(() => {
-    const generateEnhancedChartData = () => {
-      const data: ChartData[] = [];
-      let basePrice = lastValidPrice.current || currentPrice || 43250;
+    const fetchData = async () => {
+      setLoading(true)
 
-      for (let i = 0; i < 200; i++) {
-        const timestamp = Date.now() - (200 - i) * 60 * 60 * 1000;
-        const time = new Date(timestamp).toLocaleTimeString();
+      try {
+        const intervalMap: Record<string, string> = {
+          '1m': '1',
+          '5m': '5',
+          '1h': '60',
+          '1d': 'D',
+        }
+        const msMap: Record<string, number> = {
+          '1m': 60 * 1000,
+          '5m': 5 * 60 * 1000,
+          '1h': 60 * 60 * 1000,
+          '1d': 24 * 60 * 60 * 1000,
+        }
 
-        const change = (Math.random() - 0.5) * 0.02;
-        const open = basePrice;
-        const close = basePrice * (1 + change);
-        const high = Math.max(open, close) * (1 + Math.random() * 0.01);
-        const low = Math.min(open, close) * (1 - Math.random() * 0.01);
-        const volume = Math.random() * 1000000;
+        let start: number | undefined
+        let combined: ChartData[] = []
+        for (let i = 0; i < 5; i++) {
+          const list = await bybitService.getKlines({
+            symbol,
+            interval: intervalMap[timeframe] || '1',
+            limit: 200,
+            category: 'linear',
+            start,
+          })
+          if (!list.length) break
 
-        // Technical indicators (simplified calculations)
-        const rsi = 30 + Math.random() * 40;
-        const bb_middle = close;
-        const bb_upper = bb_middle * 1.02;
-        const bb_lower = bb_middle * 0.98;
+          const chunk = (list as any[])
+            .map((k) => ({
+              time: formatTime(Number(k[0]), timeframe),
+              timestamp: Number(k[0]),
+              open: Number(k[1]),
+              high: Number(k[2]),
+              low: Number(k[3]),
+              close: Number(k[4]),
+              volume: Number(k[5]),
+              rsi: 50,
+              bb_upper: 0,
+              bb_middle: 0,
+              bb_lower: 0,
+              macd: 0,
+              macd_signal: 0,
+              macd_histogram: 0,
+            })) as ChartData[]
 
-        // MACD (simplified)
-        const macd = (Math.random() - 0.5) * 100;
-        const macd_signal = macd * 0.8;
-        const macd_histogram = macd - macd_signal;
+          chunk.sort((a, b) => a.timestamp - b.timestamp)
+          combined = [...chunk, ...combined]
+          start = chunk[0].timestamp - msMap[timeframe] * 200
+        }
 
-        data.push({
-          time,
-          timestamp,
-          open,
-          high,
-          low,
-          close,
-          volume,
-          rsi,
-          bb_upper,
-          bb_middle,
-          bb_lower,
-          macd,
-          macd_signal,
-          macd_histogram,
-        });
+        calculateIndicators(combined)
+        combined.sort((a, b) => a.timestamp - b.timestamp)
+        setChartData(combined)
+        if (combined.length > 0) {
+          lastValidPrice.current = combined[combined.length - 1].close
+        }
+      } catch (err) {
+        console.error('Failed to fetch klines', err)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-        basePrice = close;
+    fetchData()
+  }, [symbol, timeframe])
+
+  // Real-time updates using ticker price
+  useEffect(() => {
+    const price = currentPrice > 0 ? currentPrice : lastValidPrice.current
+    if (loading || price <= 0 || chartData.length === 0) return
+
+    setChartData((prevData) => {
+      const newData = [...prevData]
+      const lastItem = newData[newData.length - 1]
+      const newItem: ChartData = {
+        ...lastItem,
+        time: formatTime(Date.now(), timeframe),
+        timestamp: Date.now(),
+        open: lastItem.close,
+        close: price,
+        high: Math.max(lastItem.high, price),
+        low: Math.min(lastItem.low, price),
+        volume: lastItem.volume,
+        rsi: lastItem.rsi,
+        bb_upper: lastItem.bb_upper,
+        bb_middle: lastItem.bb_middle,
+        bb_lower: lastItem.bb_lower,
+        macd: lastItem.macd,
+        macd_signal: lastItem.macd_signal,
+        macd_histogram: lastItem.macd_histogram,
       }
 
-      return data;
-    };
-
-    setChartData(generateEnhancedChartData());
-  }, [symbol]);
-
-  // Real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const price = currentPrice > 0 ? currentPrice : lastValidPrice.current;
-      if (price > 0) {
-        setChartData((prevData) => {
-          const newData = [...prevData];
-          const lastItem = newData[newData.length - 1];
-          const newItem: ChartData = {
-            ...lastItem,
-            time: new Date().toLocaleTimeString(),
-            timestamp: Date.now(),
-            close: price,
-            high: Math.max(lastItem.high, price),
-            low: Math.min(lastItem.low, price),
-            volume: Math.random() * 1000000,
-            rsi: Math.max(
-              0,
-              Math.min(100, lastItem.rsi + (Math.random() - 0.5) * 10),
-            ),
-            macd: (Math.random() - 0.5) * 100,
-          };
-
-          newItem.bb_middle = newItem.close;
-          newItem.bb_upper = newItem.bb_middle * 1.02;
-          newItem.bb_lower = newItem.bb_middle * 0.98;
-          newItem.macd_signal = newItem.macd * 0.8;
-          newItem.macd_histogram = newItem.macd - newItem.macd_signal;
-
-          newData.push(newItem);
-          return newData.slice(-200);
-        });
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [symbol, currentPrice]);
+      newData.push(newItem)
+      calculateIndicators(newData)
+      return newData.slice(-200)
+    })
+    lastValidPrice.current = price
+  }, [currentPrice, loading])
 
   const handleAskGpt = async () => {
     if (chartData.length === 0) return;
@@ -429,7 +510,11 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
       <CardContent>
         <div className="space-y-4">
           {/* Main Chart */}
-          <MainChart data={chartData} />
+          {loading ? (
+            <div className="h-96 flex items-center justify-center">로딩 중...</div>
+          ) : (
+            <MainChart data={chartData} />
+          )}
 
           {/* RSI Indicator */}
           {showIndicators.rsi && (
