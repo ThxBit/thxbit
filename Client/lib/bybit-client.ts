@@ -276,6 +276,72 @@ export class BybitService {
     return () => clearInterval(interval)
   }
 
+  subscribeToKlines(
+    symbol: string,
+    interval: string,
+    callback: (data: any) => void,
+  ) {
+    if (this.isSimulation) {
+      const fetchLatest = async () => {
+        try {
+          const list = await this.getKlines({
+            symbol,
+            interval,
+            limit: 1,
+            category: 'linear',
+          })
+          const kline = list?.[0]
+          if (kline) {
+            callback({
+              start: Number(kline[0]),
+              open: Number(kline[1]),
+              high: Number(kline[2]),
+              low: Number(kline[3]),
+              close: Number(kline[4]),
+              volume: Number(kline[5]),
+            })
+          }
+        } catch (err) {
+          console.error('Error fetching klines:', err)
+        }
+      }
+      fetchLatest()
+      const id = setInterval(fetchLatest, 1000)
+      return () => clearInterval(id)
+    }
+
+    if (!this.wsClient) {
+      this.initializeClients()
+    }
+
+    const topic = `kline.${interval}.${symbol}`
+    const handler = (event: any) => {
+      if (event.topic === topic && event.data) {
+        const d = Array.isArray(event.data) ? event.data[0] : event.data
+        callback({
+          start: Number(d.start),
+          open: Number(d.open),
+          high: Number(d.high),
+          low: Number(d.low),
+          close: Number(d.close),
+          volume: Number(d.volume),
+        })
+      }
+    }
+
+    this.wsClient?.on('update', handler)
+    this.wsClient?.subscribeV5(topic, 'linear')
+
+    return () => {
+      try {
+        this.wsClient?.unsubscribeV5(topic, 'linear')
+      } catch (err) {
+        console.warn('Failed to unsubscribe klines', err)
+      }
+      this.wsClient?.off('update', handler)
+    }
+  }
+
   // Simulation methods
   private getSimulatedBalance() {
     return {

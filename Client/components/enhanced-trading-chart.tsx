@@ -217,38 +217,55 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     fetchData()
   }, [symbol, timeframe])
 
-  // Real-time updates using ticker price
+  // Real-time updates using websocket klines
   useEffect(() => {
-    const price = currentPrice > 0 ? currentPrice : lastValidPrice.current
-    if (loading || price <= 0 || chartData.length === 0) return
+    if (loading) return
+    const intervalMap: Record<string, string> = {
+      '1m': '1',
+      '5m': '5',
+      '1h': '60',
+      '1d': 'D',
+    }
 
-    setChartData((prevData) => {
-      const newData = [...prevData]
-      const lastItem = newData[newData.length - 1]
-      const newItem: ChartData = {
-        ...lastItem,
-        time: formatTime(Date.now(), timeframe),
-        timestamp: Date.now(),
-        open: lastItem.close,
-        close: price,
-        high: Math.max(lastItem.high, price),
-        low: Math.min(lastItem.low, price),
-        volume: lastItem.volume,
-        rsi: lastItem.rsi,
-        bb_upper: lastItem.bb_upper,
-        bb_middle: lastItem.bb_middle,
-        bb_lower: lastItem.bb_lower,
-        macd: lastItem.macd,
-        macd_signal: lastItem.macd_signal,
-        macd_histogram: lastItem.macd_histogram,
-      }
+    const unsub = bybitService.subscribeToKlines(
+      symbol,
+      intervalMap[timeframe] || '1',
+      (k) => {
+        const ts = k.start < 1e12 ? k.start * 1000 : k.start
+        setChartData((prev) => {
+          const newItem: ChartData = {
+            time: formatTime(ts, timeframe),
+            timestamp: ts,
+            open: k.open,
+            high: k.high,
+            low: k.low,
+            close: k.close,
+            volume: k.volume,
+            rsi: prev.length ? prev[prev.length - 1].rsi : 50,
+            bb_upper: prev.length ? prev[prev.length - 1].bb_upper : 0,
+            bb_middle: prev.length ? prev[prev.length - 1].bb_middle : 0,
+            bb_lower: prev.length ? prev[prev.length - 1].bb_lower : 0,
+            macd: prev.length ? prev[prev.length - 1].macd : 0,
+            macd_signal: prev.length ? prev[prev.length - 1].macd_signal : 0,
+            macd_histogram: prev.length ? prev[prev.length - 1].macd_histogram : 0,
+          }
 
-      newData.push(newItem)
-      calculateIndicators(newData)
-      return newData.slice(-200)
-    })
-    lastValidPrice.current = price
-  }, [currentPrice, loading])
+          const updated = [...prev]
+          if (updated.length && updated[updated.length - 1].timestamp === newItem.timestamp) {
+            updated[updated.length - 1] = { ...updated[updated.length - 1], ...newItem }
+          } else {
+            updated.push(newItem)
+          }
+          calculateIndicators(updated)
+          return updated.slice(-1000)
+        })
+      },
+    )
+
+    return () => {
+      unsub?.()
+    }
+  }, [symbol, timeframe, loading])
 
   const handleAskGpt = async () => {
     if (chartData.length === 0) return;
