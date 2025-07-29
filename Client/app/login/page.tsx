@@ -14,10 +14,15 @@ export default function LoginPage() {
   const handleOAuthLogin = async (provider: string) => {
     setIsLoading(true)
     try {
-      const base = process.env.NEXT_PUBLIC_TRADING_SERVER || ''
-      window.location.href = `${base}/auth/${provider}`
+      // 실제 OAuth 구현
+      console.log(`Logging in with ${provider}`)
+      // 임시로 대시보드로 리다이렉트
+      setTimeout(() => {
+        window.location.href = "/"
+      }, 1000)
     } catch (error) {
-      console.error('Login failed:', error)
+      console.error("Login failed:", error)
+    } finally {
       setIsLoading(false)
     }
   }
