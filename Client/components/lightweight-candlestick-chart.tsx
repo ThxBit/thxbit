@@ -116,7 +116,7 @@ export function LightweightCandlestickChart({ data }: Props) {
       <div ref={containerRef} className="w-full h-96" />
       {hover && (
         <div className="text-xs text-center text-white">
-          O: {hover.open} H: {hover.high} L: {hover.low} C: {hover.close}
+          H: {hover.high} L: {hover.low}
         </div>
       )}
     </div>
