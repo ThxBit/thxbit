@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTradingStore } from "@/lib/trading-store";
 import { bybitService } from "@/lib/bybit-client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LightweightCandlestickChart } from "./lightweight-candlestick-chart";
 import {
   ComposedChart,
   Line,
@@ -269,20 +270,32 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     }
   };
 
-  const MainChart = ({ data }: { data: ChartData[] }) => (
-    <ResponsiveContainer width="100%" height={400}>
-      <ComposedChart data={data} isAnimationActive={false}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="time" />
-        <YAxis yAxisId="price" orientation="right" />
-        {showIndicators.volume && <YAxis yAxisId="volume" orientation="left" />}
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === "volume")
-              return [Number(value).toLocaleString(), "거래량"];
-            return [`$${Number(value).toFixed(2)}`, name];
-          }}
-        />
+  const MainChart = ({ data }: { data: ChartData[] }) => {
+    if (chartType === "candlestick") {
+      const candles = data.map((d) => ({
+        time: d.timestamp / 1000 as any,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }));
+      return <LightweightCandlestickChart data={candles} />;
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <ComposedChart data={data} isAnimationActive={false}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="time" />
+          <YAxis yAxisId="price" orientation="right" />
+          {showIndicators.volume && <YAxis yAxisId="volume" orientation="left" />}
+          <Tooltip
+            formatter={(value, name) => {
+              if (name === "volume")
+                return [Number(value).toLocaleString(), "거래량"];
+              return [`$${Number(value).toFixed(2)}`, name];
+            }}
+          />
 
         {/* Bollinger Bands */}
         {showIndicators.bollinger && (
@@ -295,6 +308,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               stroke="#e5e7eb"
               fill="transparent"
               strokeDasharray="2 2"
+              isAnimationActive={false}
             />
             <Area
               yAxisId="price"
@@ -305,6 +319,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               fill="#f3f4f6"
               fillOpacity={0.1}
               strokeDasharray="2 2"
+              isAnimationActive={false}
             />
             <Line
               yAxisId="price"
@@ -313,6 +328,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               stroke="#6b7280"
               strokeDasharray="2 2"
               dot={false}
+              isAnimationActive={false}
             />
           </>
         )}
@@ -326,6 +342,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
             stroke="#8b5cf6"
             strokeWidth={2}
             dot={false}
+            isAnimationActive={false}
           />
         ) : (
           <Line
@@ -335,16 +352,24 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
             stroke="#8b5cf6"
             strokeWidth={2}
             dot={false}
+            isAnimationActive={false}
           />
         )}
 
         {/* Volume */}
         {showIndicators.volume && (
-          <Bar yAxisId="volume" dataKey="volume" fill="#e5e7eb" opacity={0.3} />
+          <Bar
+            yAxisId="volume"
+            dataKey="volume"
+            fill="#e5e7eb"
+            opacity={0.3}
+            isAnimationActive={false}
+          />
         )}
       </ComposedChart>
     </ResponsiveContainer>
   );
+  };
 
   const RSIChart = ({ data }: { data: ChartData[] }) => (
     <ResponsiveContainer width="100%" height={120}>
@@ -363,6 +388,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           stroke="#f59e0b"
           fill="#f59e0b"
           fillOpacity={0.1}
+          isAnimationActive={false}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -381,6 +407,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           stroke="#3b82f6"
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
         <Line
           type="monotone"
@@ -388,8 +415,14 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           stroke="#ef4444"
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
-        <Bar dataKey="macd_histogram" fill="#6b7280" opacity={0.6} />
+        <Bar
+          dataKey="macd_histogram"
+          fill="#6b7280"
+          opacity={0.6}
+          isAnimationActive={false}
+        />
       </ComposedChart>
     </ResponsiveContainer>
   );
