@@ -97,6 +97,31 @@ export class BybitService {
     }
   }
 
+  /** Fetch historical klines from the local server */
+  async getKlines(params: {
+    symbol: string
+    interval?: string
+    limit?: number
+    category?: string
+  }) {
+
+    const query = new URLSearchParams({
+      symbol: params.symbol,
+      interval: params.interval?.toString() || '1',
+      limit: (params.limit || 200).toString(),
+      category: params.category || 'linear',
+    })
+
+    const res = await fetch(`${SERVER_URL}/api/klines?${query.toString()}`)
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(`Server error ${res.status}: ${message}`)
+    }
+
+    const data = await res.json()
+    return data.result?.list || []
+  }
+
   async getAccountBalance() {
     if (this.isSimulation) {
       return this.getSimulatedBalance()
@@ -207,56 +232,44 @@ export class BybitService {
   }
 
   subscribeToTickers(symbols: string[], callback: (data: any) => void) {
-    if (this.isSimulation) {
-      return this.simulateTickerData(symbols, callback)
-    }
-
-    try {
-      if (!this.wsClient) {
-        this.initializeClients()
-        if (!this.wsClient) throw new Error("WebSocket client not initialized")
+    const interval = setInterval(async () => {
+      for (const symbol of symbols) {
+        try {
+          const res = await fetch(
+            `${SERVER_URL}/api/ticker?symbol=${symbol}&category=linear`,
+          )
+          if (!res.ok) continue
+          const data = await res.json()
+          const ticker = data.result?.list?.[0]
+          if (ticker) {
+            callback({ topic: `tickers.${symbol}`, data: ticker })
+          }
+        } catch (error) {
+          console.error('Error fetching ticker:', error)
+        }
       }
+    }, 2000)
 
-      this.wsClient.subscribeV5(
-        symbols.map((symbol) => `tickers.${symbol}`),
-        "linear",
-      )
-
-      this.wsClient.on("update", callback)
-
-      return () => {
-        this.wsClient?.unsubscribeV5(
-          symbols.map((symbol) => `tickers.${symbol}`),
-          "linear",
-        )
-      }
-    } catch (error) {
-      console.error("Error subscribing to tickers:", error)
-      throw error
-    }
+    return () => clearInterval(interval)
   }
 
   subscribeToOrderbook(symbol: string, callback: (data: any) => void) {
-    if (this.isSimulation) {
-      return this.simulateOrderbookData(symbol, callback)
-    }
-
-    try {
-      if (!this.wsClient) {
-        this.initializeClients()
-        if (!this.wsClient) throw new Error("WebSocket client not initialized")
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `${SERVER_URL}/api/orderbook?symbol=${symbol}&category=linear&limit=25`,
+        )
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.result) {
+          callback({ topic: `orderbook.25.${symbol}`, data: data.result })
+        }
+      } catch (error) {
+        console.error('Error fetching orderbook:', error)
       }
+    }, 1000)
 
-      this.wsClient.subscribeV5([`orderbook.25.${symbol}`], "linear")
-      this.wsClient.on("update", callback)
-
-      return () => {
-        this.wsClient?.unsubscribeV5([`orderbook.25.${symbol}`], "linear")
-      }
-    } catch (error) {
-      console.error("Error subscribing to orderbook:", error)
-      throw error
-    }
+    return () => clearInterval(interval)
   }
 
   // Simulation methods
