@@ -27,7 +27,7 @@ export function EnhancedLiveTrading() {
   const {
     selectedSymbol,
     tickers,
-    isSimulationMode,
+    isTestnet,
     isConnected,
     error,
     setSelectedSymbol,
@@ -118,7 +118,7 @@ export function EnhancedLiveTrading() {
         <div className="flex items-center gap-2">
           {isConnected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
           <span>
-            {isConnected ? "실시간 데이터 연결됨" : "연결 끊어짐"}({isSimulationMode ? "시뮬레이션" : "실제 거래"} 모드)
+            {isConnected ? "실시간 데이터 연결됨" : "연결 끊어짐"}({isTestnet ? "테스트 거래" : "실제 거래"})
           </span>
         </div>
       </Alert>

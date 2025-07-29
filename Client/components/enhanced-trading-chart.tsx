@@ -114,7 +114,7 @@ interface EnhancedTradingChartProps {
 }
 
 export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
-  const { tickers, isSimulationMode } = useTradingStore();
+  const { tickers, isTestnet } = useTradingStore();
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [timeframe, setTimeframe] = useState("1h");
   const [chartType, setChartType] = useState<"candlestick" | "line">(
@@ -451,8 +451,8 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           <div className="flex items-center gap-4">
             <CardTitle className="flex items-center gap-2">
               {symbol} 차트
-              <Badge variant={isSimulationMode ? "secondary" : "default"}>
-                {isSimulationMode ? "시뮬레이션" : "실시간"}
+              <Badge variant={isTestnet ? "secondary" : "default"}>
+                {isTestnet ? "테스트넷" : "메인넷"}
               </Badge>
             </CardTitle>
             {currentPrice > 0 && (

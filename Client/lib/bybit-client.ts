@@ -9,14 +9,12 @@ export interface BybitConfig {
   apiKey?: string
   apiSecret?: string
   testnet?: boolean
-  simulationMode?: boolean
 }
 
 export class BybitService {
   private restClient: RestClientV5 | null = null
   private wsClient: WebsocketClient | null = null
   private config: BybitConfig
-  private isSimulation: boolean
 
   constructor(config: BybitConfig = {}) {
     this.config = {
@@ -24,29 +22,34 @@ export class BybitService {
     apiSecret: process.env.NEXT_PUBLIC_BYBIT_API_SECRET || config.apiSecret,
     testnet:
       config.testnet ?? (process.env.NEXT_PUBLIC_BYBIT_TESTNET === 'true'),
-    simulationMode: config.simulationMode,
   }
-
-  this.isSimulation = this.config.simulationMode ?? false
 
   console.log("Final config:", this.config);
 
-  if (!this.isSimulation && this.config.apiKey && this.config.apiSecret) {
+  if (this.config.apiKey && this.config.apiSecret) {
     this.initializeClients()
   }
   }
 
 
   /** Update API credentials and reinitialize clients if not in simulation mode */
-  setCredentials(apiKey: string, apiSecret: string, testnet = false) {
+  async setCredentials(apiKey: string, apiSecret: string, testnet = false) {
     this.config = {
       ...this.config,
       apiKey,
       apiSecret,
       testnet,
     }
-    if (!this.isSimulation) {
-      this.initializeClients()
+    this.initializeClients()
+
+    try {
+      await fetch(`${SERVER_URL}/api/set-credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, apiSecret, testnet }),
+      })
+    } catch (err) {
+      console.error('Failed to update server credentials:', err)
     }
   }
 
@@ -127,9 +130,6 @@ export class BybitService {
   }
 
   async getAccountBalance() {
-    if (this.isSimulation) {
-      return this.getSimulatedBalance()
-    }
 
     try {
       const res = await fetch(`${SERVER_URL}/api/balance`)
@@ -146,9 +146,6 @@ export class BybitService {
   }
 
   async getPositions() {
-    if (this.isSimulation) {
-      return this.getSimulatedPositions()
-    }
 
     try {
       const res = await fetch(`${SERVER_URL}/api/positions`)
@@ -173,9 +170,6 @@ export class BybitService {
     leverage?: number
     positionIdx?: number
   }) {
-    if (this.isSimulation) {
-      return this.simulateOrder(orderParams)
-    }
 
     try {
       const res = await fetch(`${SERVER_URL}/api/order`, {
@@ -196,9 +190,6 @@ export class BybitService {
   }
 
   async cancelOrder(symbol: string, orderId: string) {
-    if (this.isSimulation) {
-      return { success: true, orderId }
-    }
 
     try {
       if (!this.restClient) throw new Error("REST client not initialized")
@@ -281,34 +272,6 @@ export class BybitService {
     interval: string,
     callback: (data: any) => void,
   ) {
-    if (this.isSimulation) {
-      const fetchLatest = async () => {
-        try {
-          const list = await this.getKlines({
-            symbol,
-            interval,
-            limit: 1,
-            category: 'linear',
-          })
-          const kline = list?.[0]
-          if (kline) {
-            callback({
-              start: Number(kline[0]),
-              open: Number(kline[1]),
-              high: Number(kline[2]),
-              low: Number(kline[3]),
-              close: Number(kline[4]),
-              volume: Number(kline[5]),
-            })
-          }
-        } catch (err) {
-          console.error('Error fetching klines:', err)
-        }
-      }
-      fetchLatest()
-      const id = setInterval(fetchLatest, 1000)
-      return () => clearInterval(id)
-    }
 
     if (!this.wsClient) {
       this.initializeClients()
@@ -342,133 +305,6 @@ export class BybitService {
     }
   }
 
-  // Simulation methods
-  private getSimulatedBalance() {
-    return {
-      totalWalletBalance: "125430.50",
-      totalAvailableBalance: "98234.25",
-      coin: [
-        {
-          coin: "USDT",
-          walletBalance: "125430.50",
-          availableToWithdraw: "98234.25",
-        },
-      ],
-    }
-  }
-
-  private getSimulatedPositions() {
-    return [
-      {
-        symbol: "BTCUSDT",
-        side: "Buy",
-        size: "0.5",
-        entryPrice: "43100",
-        markPrice: "43250",
-        leverage: "10",
-        unrealisedPnl: "750",
-        positionValue: "21625",
-      },
-      {
-        symbol: "ETHUSDT",
-        side: "Sell",
-        size: "2.0",
-        entryPrice: "2590",
-        markPrice: "2580",
-        leverage: "5",
-        unrealisedPnl: "100",
-        positionValue: "5160",
-      },
-    ]
-  }
-
-  private simulateOrder(orderParams: any) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          orderId: `sim_${Date.now()}`,
-          orderLinkId: "",
-          symbol: orderParams.symbol,
-          side: orderParams.side,
-          orderType: orderParams.orderType,
-          qty: orderParams.qty,
-          price: orderParams.price,
-          orderStatus: "Filled",
-        })
-      }, 500)
-    })
-  }
-
-  private simulateTickerData(symbols: string[], callback: (data: any) => void) {
-    const interval = setInterval(() => {
-      symbols.forEach((symbol) => {
-        const basePrice =
-          symbol === "BTCUSDT" ? 43250 : symbol === "ETHUSDT" ? 2580 : symbol === "SOLUSDT" ? 98.5 : 0.485
-
-        callback({
-          topic: `tickers.${symbol}`,
-          data: {
-            symbol,
-            lastPrice: (basePrice * (1 + (Math.random() - 0.5) * 0.002)).toString(),
-            price24hPcnt: ((Math.random() - 0.5) * 0.1).toString(),
-            volume24h: (Math.random() * 1000000).toString(),
-            turnover24h: (Math.random() * 50000000).toString(),
-          },
-        })
-      })
-    }, 2000)
-
-    return () => clearInterval(interval)
-  }
-
-  private simulateOrderbookData(symbol: string, callback: (data: any) => void) {
-    const interval = setInterval(() => {
-      const basePrice = symbol === "BTCUSDT" ? 43250 : symbol === "ETHUSDT" ? 2580 : symbol === "SOLUSDT" ? 98.5 : 0.485
-
-      const asks = Array.from({ length: 25 }, (_, i) => [
-        (basePrice * (1 + (i + 1) * 0.0001)).toString(),
-        (Math.random() * 10).toString(),
-      ])
-
-      const bids = Array.from({ length: 25 }, (_, i) => [
-        (basePrice * (1 - (i + 1) * 0.0001)).toString(),
-        (Math.random() * 10).toString(),
-      ])
-
-      callback({
-        topic: `orderbook.25.${symbol}`,
-        data: {
-          s: symbol,
-          a: asks,
-          b: bids,
-          u: Date.now(),
-          seq: Date.now(),
-        },
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }
-
-  setSimulationMode(enabled: boolean) {
-    this.isSimulation = enabled
-    if (!enabled && this.config.apiKey && this.config.apiSecret) {
-      this.initializeClients()
-    } else if (enabled) {
-      // when switching back to simulation, clean up live clients
-      try {
-        this.wsClient?.closeAll?.()
-      } catch (e) {
-        console.warn("Failed to close websocket client", e)
-      }
-      this.wsClient = null
-      this.restClient = null
-    }
-  }
-
-  isSimulationMode() {
-    return this.isSimulation
-  }
 }
 
 // Global instance

@@ -8,9 +8,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const restClient = new RestClientV5({
+let restClient = new RestClientV5({
   key: process.env.BYBIT_API_KEY,
   secret: process.env.BYBIT_API_SECRET,
+  testnet: process.env.BYBIT_TESTNET === 'true',
+});
+
+function initRestClient({ apiKey, apiSecret, testnet }) {
+  restClient = new RestClientV5({
+    key: apiKey,
+    secret: apiSecret,
+    testnet,
+  });
+}
+
+// Initialize with environment variables on startup
+initRestClient({
+  apiKey: process.env.BYBIT_API_KEY,
+  apiSecret: process.env.BYBIT_API_SECRET,
   testnet: process.env.BYBIT_TESTNET === 'true',
 });
 
@@ -121,6 +136,21 @@ app.post('/api/validate', async (req, res) => {
   } catch (err) {
     console.log('API credential validation failed:', err.message);
     res.status(400).json({ valid: false, error: err.message });
+  }
+});
+
+app.post('/api/set-credentials', (req, res) => {
+  const { apiKey, apiSecret, testnet } = req.body;
+  try {
+    initRestClient({
+      apiKey,
+      apiSecret,
+      testnet: testnet === true || testnet === 'true',
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to set credentials:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
