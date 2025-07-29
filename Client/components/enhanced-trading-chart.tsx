@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTradingStore } from "@/lib/trading-store";
 import { bybitService } from "@/lib/bybit-client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LightweightCandlestickChart } from "./lightweight-candlestick-chart";
 import {
   ComposedChart,
   Line,
@@ -216,38 +217,55 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     fetchData()
   }, [symbol, timeframe])
 
-  // Real-time updates using ticker price
+  // Real-time updates using websocket klines
   useEffect(() => {
-    const price = currentPrice > 0 ? currentPrice : lastValidPrice.current
-    if (loading || price <= 0 || chartData.length === 0) return
+    if (loading) return
+    const intervalMap: Record<string, string> = {
+      '1m': '1',
+      '5m': '5',
+      '1h': '60',
+      '1d': 'D',
+    }
 
-    setChartData((prevData) => {
-      const newData = [...prevData]
-      const lastItem = newData[newData.length - 1]
-      const newItem: ChartData = {
-        ...lastItem,
-        time: formatTime(Date.now(), timeframe),
-        timestamp: Date.now(),
-        open: lastItem.close,
-        close: price,
-        high: Math.max(lastItem.high, price),
-        low: Math.min(lastItem.low, price),
-        volume: lastItem.volume,
-        rsi: lastItem.rsi,
-        bb_upper: lastItem.bb_upper,
-        bb_middle: lastItem.bb_middle,
-        bb_lower: lastItem.bb_lower,
-        macd: lastItem.macd,
-        macd_signal: lastItem.macd_signal,
-        macd_histogram: lastItem.macd_histogram,
-      }
+    const unsub = bybitService.subscribeToKlines(
+      symbol,
+      intervalMap[timeframe] || '1',
+      (k) => {
+        const ts = k.start < 1e12 ? k.start * 1000 : k.start
+        setChartData((prev) => {
+          const newItem: ChartData = {
+            time: formatTime(ts, timeframe),
+            timestamp: ts,
+            open: k.open,
+            high: k.high,
+            low: k.low,
+            close: k.close,
+            volume: k.volume,
+            rsi: prev.length ? prev[prev.length - 1].rsi : 50,
+            bb_upper: prev.length ? prev[prev.length - 1].bb_upper : 0,
+            bb_middle: prev.length ? prev[prev.length - 1].bb_middle : 0,
+            bb_lower: prev.length ? prev[prev.length - 1].bb_lower : 0,
+            macd: prev.length ? prev[prev.length - 1].macd : 0,
+            macd_signal: prev.length ? prev[prev.length - 1].macd_signal : 0,
+            macd_histogram: prev.length ? prev[prev.length - 1].macd_histogram : 0,
+          }
 
-      newData.push(newItem)
-      calculateIndicators(newData)
-      return newData.slice(-200)
-    })
-    lastValidPrice.current = price
-  }, [currentPrice, loading])
+          const updated = [...prev]
+          if (updated.length && updated[updated.length - 1].timestamp === newItem.timestamp) {
+            updated[updated.length - 1] = { ...updated[updated.length - 1], ...newItem }
+          } else {
+            updated.push(newItem)
+          }
+          calculateIndicators(updated)
+          return updated.slice(-1000)
+        })
+      },
+    )
+
+    return () => {
+      unsub?.()
+    }
+  }, [symbol, timeframe, loading])
 
   const handleAskGpt = async () => {
     if (chartData.length === 0) return;
@@ -269,20 +287,32 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     }
   };
 
-  const MainChart = ({ data }: { data: ChartData[] }) => (
-    <ResponsiveContainer width="100%" height={400}>
-      <ComposedChart data={data} isAnimationActive={false}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="time" />
-        <YAxis yAxisId="price" orientation="right" />
-        {showIndicators.volume && <YAxis yAxisId="volume" orientation="left" />}
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === "volume")
-              return [Number(value).toLocaleString(), "거래량"];
-            return [`$${Number(value).toFixed(2)}`, name];
-          }}
-        />
+  const MainChart = ({ data }: { data: ChartData[] }) => {
+    if (chartType === "candlestick") {
+      const candles = data.map((d) => ({
+        time: d.timestamp / 1000 as any,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }));
+      return <LightweightCandlestickChart data={candles} />;
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <ComposedChart data={data} isAnimationActive={false}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="time" />
+          <YAxis yAxisId="price" orientation="right" />
+          {showIndicators.volume && <YAxis yAxisId="volume" orientation="left" />}
+          <Tooltip
+            formatter={(value, name) => {
+              if (name === "volume")
+                return [Number(value).toLocaleString(), "거래량"];
+              return [`$${Number(value).toFixed(2)}`, name];
+            }}
+          />
 
         {/* Bollinger Bands */}
         {showIndicators.bollinger && (
@@ -295,6 +325,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               stroke="#e5e7eb"
               fill="transparent"
               strokeDasharray="2 2"
+              isAnimationActive={false}
             />
             <Area
               yAxisId="price"
@@ -305,6 +336,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               fill="#f3f4f6"
               fillOpacity={0.1}
               strokeDasharray="2 2"
+              isAnimationActive={false}
             />
             <Line
               yAxisId="price"
@@ -313,6 +345,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               stroke="#6b7280"
               strokeDasharray="2 2"
               dot={false}
+              isAnimationActive={false}
             />
           </>
         )}
@@ -326,6 +359,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
             stroke="#8b5cf6"
             strokeWidth={2}
             dot={false}
+            isAnimationActive={false}
           />
         ) : (
           <Line
@@ -335,16 +369,24 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
             stroke="#8b5cf6"
             strokeWidth={2}
             dot={false}
+            isAnimationActive={false}
           />
         )}
 
         {/* Volume */}
         {showIndicators.volume && (
-          <Bar yAxisId="volume" dataKey="volume" fill="#e5e7eb" opacity={0.3} />
+          <Bar
+            yAxisId="volume"
+            dataKey="volume"
+            fill="#e5e7eb"
+            opacity={0.3}
+            isAnimationActive={false}
+          />
         )}
       </ComposedChart>
     </ResponsiveContainer>
   );
+  };
 
   const RSIChart = ({ data }: { data: ChartData[] }) => (
     <ResponsiveContainer width="100%" height={120}>
@@ -363,6 +405,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           stroke="#f59e0b"
           fill="#f59e0b"
           fillOpacity={0.1}
+          isAnimationActive={false}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -381,6 +424,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           stroke="#3b82f6"
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
         <Line
           type="monotone"
@@ -388,8 +432,14 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           stroke="#ef4444"
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
-        <Bar dataKey="macd_histogram" fill="#6b7280" opacity={0.6} />
+        <Bar
+          dataKey="macd_histogram"
+          fill="#6b7280"
+          opacity={0.6}
+          isAnimationActive={false}
+        />
       </ComposedChart>
     </ResponsiveContainer>
   );
