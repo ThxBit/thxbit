@@ -32,7 +32,7 @@ interface Position {
 }
 
 export function EnhancedPositionManager() {
-  const { positions, isSimulationMode, refreshAccountData } = useTradingStore()
+  const { positions, isTestnet, refreshAccountData } = useTradingStore()
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
   const [newStopLoss, setNewStopLoss] = useState("")
   const [newTakeProfit, setNewTakeProfit] = useState("")
@@ -114,8 +114,8 @@ export function EnhancedPositionManager() {
           <div>
             <CardTitle className="flex items-center gap-2">
               보유 포지션
-              <Badge variant={isSimulationMode ? "secondary" : "default"}>
-                {isSimulationMode ? "시뮬레이션" : "실제"}
+              <Badge variant={isTestnet ? "secondary" : "default"}>
+                {isTestnet ? "테스트넷" : "메인넷"}
               </Badge>
             </CardTitle>
             <CardDescription>현재 보유 중인 포지션을 실시간으로 관리하세요</CardDescription>

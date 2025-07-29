@@ -16,12 +16,15 @@ export function ApiSettings() {
     apiKey,
     apiSecret,
     isTestnet,
-    isSimulationMode,
     isConnected,
     isCheckingCredentials,
     error,
     setApiCredentials,
-    toggleSimulationMode,
+    toggleTradingMode,
+    testApiKey,
+    testApiSecret,
+    liveApiKey,
+    liveApiSecret,
   } = useTradingStore()
 
   const [localApiKey, setLocalApiKey] = useState(apiKey)
@@ -30,19 +33,16 @@ export function ApiSettings() {
 
   // Sync local input state with persisted store values
   useEffect(() => {
-    setLocalApiKey(apiKey)
-  }, [apiKey])
-
-  useEffect(() => {
-    setLocalApiSecret(apiSecret)
-  }, [apiSecret])
+    setLocalApiKey(isTestnet ? testApiKey : liveApiKey)
+    setLocalApiSecret(isTestnet ? testApiSecret : liveApiSecret)
+  }, [isTestnet, testApiKey, testApiSecret, liveApiKey, liveApiSecret])
 
   // Re-validate credentials on mount when they exist
   useEffect(() => {
-    if (apiKey && apiSecret && !isSimulationMode && !isConnected && !isCheckingCredentials) {
+    if (apiKey && apiSecret && !isConnected && !isCheckingCredentials) {
       setApiCredentials(apiKey, apiSecret)
     }
-  }, [apiKey, apiSecret, isSimulationMode])
+  }, [apiKey, apiSecret])
 
   const handleSaveCredentials = () => {
     setApiCredentials(localApiKey, localApiSecret)
@@ -69,66 +69,79 @@ export function ApiSettings() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium">거래 모드</h3>
-                <Badge variant={isSimulationMode ? "secondary" : "default"}>
-                  {isSimulationMode ? "시뮬레이션" : "실제 거래"}
+                <Badge variant={isTestnet ? "secondary" : "default"}>
+                  {isTestnet ? "테스트 거래" : "실제 거래"}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                {isSimulationMode ? "가상 자금으로 안전하게 거래를 연습하세요" : "실제 자금으로 거래합니다 (주의 필요)"}
+                {isTestnet ? "테스트 환경에서 안전하게 거래합니다" : "실제 자금으로 거래합니다 (주의 필요)"}
               </p>
             </div>
-            <Switch checked={!isSimulationMode} onCheckedChange={toggleSimulationMode} />
+            <Switch checked={isTestnet} onCheckedChange={toggleTradingMode} />
           </div>
 
           {/* API 키 설정 */}
-          {!isSimulationMode && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key</Label>
-                <div className="relative">
-                  <Input
-                    id="apiKey"
-                    name="api-key"
-                    type={showSecrets ? "text" : "password"}
-                    placeholder="Bybit API Key 입력"
-                    value={localApiKey}
-                    autoComplete="new-password"
-                    onChange={(e) => setLocalApiKey(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
-                    onClick={() => setShowSecrets(!showSecrets)}
-                  >
-                    {showSecrets ? "숨기기" : "보기"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="apiSecret">API Secret</Label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">API Key</Label>
+              <div className="relative">
                 <Input
-                  id="apiSecret"
-                  name="api-secret"
+                  id="apiKey"
+                  name="api-key"
                   type={showSecrets ? "text" : "password"}
-                  placeholder="Bybit API Secret 입력"
-                  value={localApiSecret}
+                  placeholder="Bybit API Key 입력"
+                  value={localApiKey}
                   autoComplete="new-password"
-                  onChange={(e) => setLocalApiSecret(e.target.value)}
+                  onChange={(e) => setLocalApiKey(e.target.value)}
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                  onClick={() => setShowSecrets(!showSecrets)}
+                >
+                  {showSecrets ? "숨기기" : "보기"}
+                </Button>
+                <Button
+                  asChild
+                  variant="link"
+                  size="sm"
+                  className="absolute right-14 top-1/2 -translate-y-1/2"
+                >
+                  <a
+                    href={isTestnet
+                      ? "https://testnet.bybit.com/app/user/api-management"
+                      : "https://bybit.com/app/user/api-management"}
+                    target="_blank"
+                  >
+                    발급
+                  </a>
+                </Button>
               </div>
-
-              <Button onClick={handleSaveCredentials} disabled={!localApiKey || !localApiSecret} className="w-full">
-                <Shield className="h-4 w-4 mr-2" />
-                API 키 저장
-              </Button>
-              {isCheckingCredentials && (
-                <p className="text-sm text-muted-foreground mt-2">API 키 확인 중...</p>
-              )}
             </div>
-          )}
+
+            <div className="space-y-2">
+              <Label htmlFor="apiSecret">API Secret</Label>
+              <Input
+                id="apiSecret"
+                name="api-secret"
+                type={showSecrets ? "text" : "password"}
+                placeholder="Bybit API Secret 입력"
+                value={localApiSecret}
+                autoComplete="new-password"
+                onChange={(e) => setLocalApiSecret(e.target.value)}
+              />
+            </div>
+
+            <Button onClick={handleSaveCredentials} disabled={!localApiKey || !localApiSecret} className="w-full">
+              <Shield className="h-4 w-4 mr-2" />
+              API 키 저장
+            </Button>
+            {isCheckingCredentials && (
+              <p className="text-sm text-muted-foreground mt-2">API 키 확인 중...</p>
+            )}
+          </div>
 
           {/* 연결 상태 */}
           <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -147,7 +160,7 @@ export function ApiSettings() {
                     : "연결 안됨"}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {isSimulationMode ? "시뮬레이션 모드" : isTestnet ? "테스트넷" : "메인넷"}
+                  {isTestnet ? "테스트넷" : "메인넷"}
                 </p>
               </div>
             </div>
@@ -155,19 +168,15 @@ export function ApiSettings() {
           </div>
 
           {/* 현재 설정 요약 */}
-          {(apiKey || isSimulationMode) && (
+          {(apiKey) && (
             <div className="space-y-3 p-4 bg-muted rounded-lg">
               <h4 className="font-medium">현재 설정</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>모드:</span>
-                  <span>{isSimulationMode ? "시뮬레이션" : "실제 거래"}</span>
-                </div>
-                <div className="flex justify-between">
                   <span>네트워크:</span>
                   <span>{isTestnet ? "테스트넷" : "메인넷"}</span>
                 </div>
-                {!isSimulationMode && (
+                {apiKey && (
                   <div className="flex justify-between">
                     <span>API Key:</span>
                     <span className="font-mono">{maskSecret(apiKey)}</span>
