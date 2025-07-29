@@ -21,12 +21,16 @@ app.get('/api/klines', async (req, res) => {
       interval = '1',
       limit = '200',
       category = 'linear',
+      start,
+      end,
     } = req.query;
     const result = await restClient.getKline({
       category,
       symbol,
       interval: interval.toString(),
       limit: parseInt(limit, 10),
+      ...(start ? { start: parseInt(start, 10) } : {}),
+      ...(end ? { end: parseInt(end, 10) } : {}),
     });
     res.json(result);
   } catch (err) {

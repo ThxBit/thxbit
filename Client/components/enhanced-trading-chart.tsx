@@ -22,8 +22,12 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, BarChart3, LineChart } from "lucide-react";
 
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("ko-KR", { hour12: false })
+function formatTime(ts: number, tf: string) {
+  const d = new Date(ts)
+  if (tf === '1d') {
+    return d.toLocaleDateString('ko-KR')
+  }
+  return d.toLocaleTimeString('ko-KR', { hour12: false })
 }
 
 function calculateIndicators(data: ChartData[]) {
@@ -154,32 +158,53 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           '1h': '60',
           '1d': 'D',
         }
-        const list = await bybitService.getKlines({
-          symbol,
-          interval: intervalMap[timeframe] || '1',
-          limit: 200,
-          category: 'linear',
-        })
-        const data = list.map((k: any) => ({
-          time: formatTime(Number(k[0])),
-          timestamp: Number(k[0]),
-          open: Number(k[1]),
-          high: Number(k[2]),
-          low: Number(k[3]),
-          close: Number(k[4]),
-          volume: Number(k[5]),
-          rsi: 50,
-          bb_upper: 0,
-          bb_middle: 0,
-          bb_lower: 0,
-          macd: 0,
-          macd_signal: 0,
-          macd_histogram: 0,
-        })) as ChartData[]
-        calculateIndicators(data)
-        setChartData(data)
-        if (data.length > 0) {
-          lastValidPrice.current = data[data.length - 1].close
+        const msMap: Record<string, number> = {
+          '1m': 60 * 1000,
+          '5m': 5 * 60 * 1000,
+          '1h': 60 * 60 * 1000,
+          '1d': 24 * 60 * 60 * 1000,
+        }
+
+        let start: number | undefined
+        let combined: ChartData[] = []
+        for (let i = 0; i < 5; i++) {
+          const list = await bybitService.getKlines({
+            symbol,
+            interval: intervalMap[timeframe] || '1',
+            limit: 200,
+            category: 'linear',
+            start,
+          })
+          if (!list.length) break
+
+          const chunk = (list as any[])
+            .map((k) => ({
+              time: formatTime(Number(k[0]), timeframe),
+              timestamp: Number(k[0]),
+              open: Number(k[1]),
+              high: Number(k[2]),
+              low: Number(k[3]),
+              close: Number(k[4]),
+              volume: Number(k[5]),
+              rsi: 50,
+              bb_upper: 0,
+              bb_middle: 0,
+              bb_lower: 0,
+              macd: 0,
+              macd_signal: 0,
+              macd_histogram: 0,
+            })) as ChartData[]
+
+          chunk.sort((a, b) => a.timestamp - b.timestamp)
+          combined = [...chunk, ...combined]
+          start = chunk[0].timestamp - msMap[timeframe] * 200
+        }
+
+        calculateIndicators(combined)
+        combined.sort((a, b) => a.timestamp - b.timestamp)
+        setChartData(combined)
+        if (combined.length > 0) {
+          lastValidPrice.current = combined[combined.length - 1].close
         }
       } catch (err) {
         console.error('Failed to fetch klines', err)
@@ -201,7 +226,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
       const lastItem = newData[newData.length - 1]
       const newItem: ChartData = {
         ...lastItem,
-        time: formatTime(Date.now()),
+        time: formatTime(Date.now(), timeframe),
         timestamp: Date.now(),
         open: lastItem.close,
         close: price,

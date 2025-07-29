@@ -103,6 +103,8 @@ export class BybitService {
     interval?: string
     limit?: number
     category?: string
+    start?: number
+    end?: number
   }) {
 
     const query = new URLSearchParams({
@@ -111,6 +113,8 @@ export class BybitService {
       limit: (params.limit || 200).toString(),
       category: params.category || 'linear',
     })
+    if (params.start) query.set('start', params.start.toString())
+    if (params.end) query.set('end', params.end.toString())
 
     const res = await fetch(`${SERVER_URL}/api/klines?${query.toString()}`)
     if (!res.ok) {
