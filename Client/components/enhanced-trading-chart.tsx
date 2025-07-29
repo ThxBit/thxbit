@@ -256,6 +256,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           } else {
             updated.push(newItem)
           }
+          updated.sort((a, b) => a.timestamp - b.timestamp)
           calculateIndicators(updated)
           return updated.slice(-1000)
         })
@@ -289,7 +290,8 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
 
   const MainChart = ({ data }: { data: ChartData[] }) => {
     if (chartType === "candlestick") {
-      const candles = data.map((d) => ({
+      const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+      const candles = sorted.map((d) => ({
         time: d.timestamp / 1000 as any,
         open: d.open,
         high: d.high,
