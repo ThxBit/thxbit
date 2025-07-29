@@ -78,6 +78,7 @@ export function WebsocketCandlestickChart({ symbol, timeframe = "1m" }: Props) {
               } else {
                 updated.push(newItem)
               }
+              updated.sort((a, b) => Number(a.time) - Number(b.time))
               return updated.slice(-1000)
             })
           }
