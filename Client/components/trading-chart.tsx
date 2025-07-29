@@ -35,6 +35,12 @@ interface TradingChartProps {
 export function TradingChart({ symbol }: TradingChartProps) {
   const [chartData, setChartData] = useState<ChartData[]>([])
   const [timeframe, setTimeframe] = useState("1h")
+  const [animate, setAnimate] = useState(true)
+
+  // Disable animations after initial mount
+  useEffect(() => {
+    setAnimate(false)
+  }, [])
 
   // 차트 데이터 생성 (시뮬레이션)
   useEffect(() => {
@@ -111,7 +117,7 @@ export function TradingChart({ symbol }: TradingChartProps) {
 
   const CandlestickChart = ({ data }: { data: ChartData[] }) => (
     <ResponsiveContainer width="100%" height={400}>
-      <ComposedChart data={data}>
+      <ComposedChart data={data} isAnimationActive={animate}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="time" />
         <YAxis yAxisId="price" orientation="right" />
@@ -124,29 +130,29 @@ export function TradingChart({ symbol }: TradingChartProps) {
         />
 
         {/* 볼린저 밴드 */}
-        <Line yAxisId="price" type="monotone" dataKey="bb_upper" stroke="#e5e7eb" strokeDasharray="2 2" dot={false} />
-        <Line yAxisId="price" type="monotone" dataKey="bb_middle" stroke="#6b7280" strokeDasharray="2 2" dot={false} />
-        <Line yAxisId="price" type="monotone" dataKey="bb_lower" stroke="#e5e7eb" strokeDasharray="2 2" dot={false} />
+        <Line yAxisId="price" type="monotone" dataKey="bb_upper" stroke="#e5e7eb" strokeDasharray="2 2" dot={false} isAnimationActive={animate} />
+        <Line yAxisId="price" type="monotone" dataKey="bb_middle" stroke="#6b7280" strokeDasharray="2 2" dot={false} isAnimationActive={animate} />
+        <Line yAxisId="price" type="monotone" dataKey="bb_lower" stroke="#e5e7eb" strokeDasharray="2 2" dot={false} isAnimationActive={animate} />
 
         {/* 가격 라인 */}
-        <Line yAxisId="price" type="monotone" dataKey="close" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+        <Line yAxisId="price" type="monotone" dataKey="close" stroke="#8b5cf6" strokeWidth={2} dot={false} isAnimationActive={animate} />
 
         {/* 거래량 */}
-        <Bar yAxisId="volume" dataKey="volume" fill="#e5e7eb" opacity={0.3} />
+        <Bar yAxisId="volume" dataKey="volume" fill="#e5e7eb" opacity={0.3} isAnimationActive={animate} />
       </ComposedChart>
     </ResponsiveContainer>
   )
 
   const RSIChart = ({ data }: { data: ChartData[] }) => (
     <ResponsiveContainer width="100%" height={150}>
-      <ComposedChart data={data}>
+      <ComposedChart data={data} isAnimationActive={animate}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="time" />
         <YAxis domain={[0, 100]} />
         <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}`, "RSI"]} />
         <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="2 2" />
         <ReferenceLine y={30} stroke="#22c55e" strokeDasharray="2 2" />
-        <Line type="monotone" dataKey="rsi" stroke="#f59e0b" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="rsi" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={animate} />
       </ComposedChart>
     </ResponsiveContainer>
   )
