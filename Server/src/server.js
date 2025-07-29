@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
+//const cors = require('cors');
 const { RestClientV5 } = require('bybit-api');
 const session = require('express-session');
 const passport = require('passport');
@@ -8,7 +8,14 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mysql = require('mysql2/promise');
 
 const app = express();
-app.use(cors());
+//app.use(cors());
+
+const cors = require('cors');
+app.use(cors({
+  origin: 'http://localhost:3000', // 정확한 origin 명시
+  credentials: true               // 쿠키 허용
+}));
+
 app.use(express.json());
 
 // MySQL connection pool
