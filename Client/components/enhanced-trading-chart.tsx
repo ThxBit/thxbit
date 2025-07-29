@@ -6,6 +6,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTradingStore } from "@/lib/trading-store";
+import { bybitService } from "@/lib/bybit-client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ComposedChart,
   Line,
@@ -54,6 +56,8 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     macd: false,
     volume: true,
   });
+  const [gptAnswer, setGptAnswer] = useState<string | null>(null);
+  const [isAsking, setIsAsking] = useState(false);
   const lastValidPrice = useRef(0);
 
   const currentTicker = tickers[symbol];
@@ -163,6 +167,26 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
 
     return () => clearInterval(interval);
   }, [symbol, currentPrice]);
+
+  const handleAskGpt = async () => {
+    if (chartData.length === 0) return;
+    setIsAsking(true);
+    setGptAnswer(null);
+    try {
+      const payload = {
+        symbol,
+        currentPrice,
+        rsi: chartData[chartData.length - 1].rsi,
+        data: chartData.slice(-20),
+      };
+      const text = await bybitService.getGptAnalysis(payload);
+      setGptAnswer(text);
+    } catch (err: any) {
+      setGptAnswer('오류: ' + (err.message || 'failed'));
+    } finally {
+      setIsAsking(false);
+    }
+  };
 
   const MainChart = ({ data }: { data: ChartData[] }) => (
     <ResponsiveContainer width="100%" height={400}>
@@ -392,6 +416,14 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           >
             거래량
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleAskGpt}
+            disabled={isAsking}
+          >
+            {isAsking ? "분석 중..." : "GPT에 이 코인 물어보기"}
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -413,6 +445,14 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
               <h4 className="text-sm font-medium mb-2">MACD</h4>
               <MACDChart data={chartData} />
             </div>
+          )}
+
+          {gptAnswer && (
+            <Alert>
+              <AlertDescription className="whitespace-pre-wrap">
+                {gptAnswer}
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       </CardContent>

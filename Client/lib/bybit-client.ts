@@ -187,6 +187,25 @@ export class BybitService {
     }
   }
 
+  async getGptAnalysis(data: any) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/gpt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const result = await res.json()
+      return result.text as string
+    } catch (error) {
+      console.error('Error fetching GPT analysis:', error)
+      throw error
+    }
+  }
+
   subscribeToTickers(symbols: string[], callback: (data: any) => void) {
     if (this.isSimulation) {
       return this.simulateTickerData(symbols, callback)
