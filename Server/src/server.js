@@ -103,6 +103,8 @@ app.get('/api/orderbook', async (req, res) => {
 app.get('/api/orders', async (req, res) => {
   try {
     const result = await restClient.getActiveOrders({ category: 'linear' });
+    const count = result?.result?.list?.length || 0;
+    console.log('Fetched', count, 'active orders');
     res.json(result);
   } catch (err) {
     console.error('Error fetching orders:', err);

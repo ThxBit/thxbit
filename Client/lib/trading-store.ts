@@ -141,6 +141,7 @@ export const useTradingStore = create<TradingState>()(
       ]);
 
       set({ balance, positions, orders, error: null });
+      console.log('Loaded', orders.length, 'active orders');
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown error" });
     }

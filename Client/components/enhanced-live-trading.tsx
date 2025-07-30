@@ -30,6 +30,7 @@ export function EnhancedLiveTrading() {
     isTestnet,
     isConnected,
     balance,
+    positions,
     error,
     setSelectedSymbol,
     updateTicker,
@@ -73,6 +74,12 @@ export function EnhancedLiveTrading() {
     }
   }, [selectedSymbol, updateTicker, updateOrderbook, refreshAccountData])
 
+  useEffect(() => {
+    refreshAccountData()
+    const id = setInterval(refreshAccountData, 5000)
+    return () => clearInterval(id)
+  }, [refreshAccountData])
+
   const currentTicker = tickers[selectedSymbol]
   const currentPrice = currentTicker?.lastPrice ? Number.parseFloat(currentTicker.lastPrice) : 0
   const priceChange = currentTicker?.price24hPcnt ? Number.parseFloat(currentTicker.price24hPcnt) : 0
@@ -99,6 +106,13 @@ export function EnhancedLiveTrading() {
     }
     return 0
   }, [balance])
+
+  const positionQty = useMemo(() => {
+    if (!positions) return 0
+    return positions
+      .filter((p: any) => p.symbol === selectedSymbol)
+      .reduce((sum: number, p: any) => sum + Number.parseFloat(p.size || '0'), 0)
+  }, [positions, selectedSymbol])
 
   // Pre-fill limit order price with current market price when available
   useEffect(() => {
@@ -213,6 +227,9 @@ export function EnhancedLiveTrading() {
               <CardDescription>
                 {SUPPORTED_SYMBOLS.find((s) => s.symbol === selectedSymbol)?.name}
                 {currentPrice > 0 && ` - $${currentPrice.toFixed(currentPrice > 1 ? 2 : 6)}`}
+                {positionQty > 0 && (
+                  <> | 보유 수량: {positionQty.toFixed(4)}</>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
