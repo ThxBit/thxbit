@@ -102,15 +102,7 @@ export function LightweightCandlestickChart({ data }: Props) {
     }
 
     const sorted = [...data].sort((a, b) => Number(a.time) - Number(b.time));
-
-    if (lengthRef.current === 0) {
-      seriesRef.current.setData(sorted);
-    } else if (sorted.length >= lengthRef.current) {
-      const last = sorted[sorted.length - 1];
-      seriesRef.current.update(last);
-    } else {
-      seriesRef.current.setData(sorted);
-    }
+    seriesRef.current.setData(sorted);
     chartRef.current?.timeScale().scrollToRealTime();
     lengthRef.current = sorted.length;
   }, [data]);
