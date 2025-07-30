@@ -207,6 +207,78 @@ export class BybitService {
     }
   }
 
+  async getActiveOrders() {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/orders`)
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result?.list || []
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      throw error
+    }
+  }
+
+  async amendOrder(params: { symbol: string; orderId: string; qty?: string; price?: string }) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/amend-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
+    } catch (error) {
+      console.error('Error amending order:', error)
+      throw error
+    }
+  }
+
+  async closePosition(params: { symbol: string; side: 'Buy' | 'Sell'; qty: string; positionIdx?: number }) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/close-position`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
+    } catch (error) {
+      console.error('Error closing position:', error)
+      throw error
+    }
+  }
+
+  async setTradingStop(params: { symbol: string; takeProfit?: string; stopLoss?: string; positionIdx?: number }) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/trading-stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
+    } catch (error) {
+      console.error('Error updating position:', error)
+      throw error
+    }
+  }
+
   async getGptAnalysis(data: any) {
     try {
       const res = await fetch(`${SERVER_URL}/api/gpt`, {

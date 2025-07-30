@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,6 +11,7 @@ import { TradingStrategies } from "@/components/trading-strategies"
 import { RecentTrades } from "@/components/recent-trades"
 import { ApiSettings } from "@/components/api-settings"
 import { EnhancedLiveTrading } from "@/components/enhanced-live-trading"
+import { useTradingStore } from "@/lib/trading-store"
 
 interface DashboardProps {
   user: { name: string; email: string } | null
@@ -18,10 +19,39 @@ interface DashboardProps {
 }
 
 export function Dashboard({ user, onLogout }: DashboardProps) {
-  const [totalBalance] = useState(125430.5)
-  const [totalProfit] = useState(12543.2)
-  const [profitPercentage] = useState(11.2)
-  const [activeStrategies] = useState(3)
+  const { balance, orders, positions, refreshAccountData } = useTradingStore()
+
+  useEffect(() => {
+    refreshAccountData()
+  }, [refreshAccountData])
+
+  const totalBalance = useMemo(() => {
+    if (!balance) return 0
+    const list = balance.list || balance.result?.list
+    const item = Array.isArray(list) ? list[0] : null
+    if (!item) return 0
+    if (item.totalEquity) return Number.parseFloat(item.totalEquity)
+    if (item.totalWalletBalance) return Number.parseFloat(item.totalWalletBalance)
+    return 0
+  }, [balance])
+
+  const totalProfit = useMemo(
+    () =>
+      positions.reduce(
+        (sum: number, p: any) => sum + Number.parseFloat(p.unrealisedPnl || '0'),
+        0,
+      ),
+    [positions],
+  )
+  const profitPercentage = useMemo(() => {
+    const totalValue = positions.reduce(
+      (sum: number, p: any) => sum + Number.parseFloat(p.positionValue || '0'),
+      0,
+    )
+    return totalValue ? (totalProfit / totalValue) * 100 : 0
+  }, [positions, totalProfit])
+
+  const activeStrategies = 3
 
   return (
     <div className="min-h-screen bg-slate-50">
