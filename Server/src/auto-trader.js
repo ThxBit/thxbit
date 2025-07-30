@@ -1,32 +1,47 @@
-const Database = require('better-sqlite3');
+const mysql = require('mysql2/promise');
 const { RestClientV5 } = require('bybit-api');
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 require('dotenv').config();
 
-const db = new Database('auto-trading.db');
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || '',
+  database: process.env.DB_NAME || 'autotrade'
+});
 
-db.prepare(`CREATE TABLE IF NOT EXISTS users(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  apiKey TEXT NOT NULL,
-  apiSecret TEXT NOT NULL,
-  testnet INTEGER DEFAULT 1
-)` ).run();
+async function initDb(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS users(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userNumber INT NOT NULL,
+    googleToken VARCHAR(255) NOT NULL,
+    apiKey VARCHAR(255) NOT NULL,
+    apiSecret VARCHAR(255) NOT NULL,
+    testnet TINYINT DEFAULT 1
+  )`);
+}
+initDb();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/users', (req,res)=>{
-  const { apiKey, apiSecret, testnet } = req.body;
-  if(!apiKey || !apiSecret) return res.status(400).json({error:'apiKey and apiSecret required'});
-  db.prepare('INSERT INTO users(apiKey,apiSecret,testnet) VALUES(?,?,?)').run(apiKey, apiSecret, testnet?1:0);
+app.post('/users', async (req,res)=>{
+  const { userNumber, googleToken, apiKey, apiSecret, testnet } = req.body;
+  if(!userNumber || !googleToken || !apiKey || !apiSecret){
+    return res.status(400).json({error:'userNumber, googleToken, apiKey and apiSecret required'});
+  }
+  await pool.query(
+    'INSERT INTO users(userNumber, googleToken, apiKey, apiSecret, testnet) VALUES (?,?,?,?,?)',
+    [userNumber, googleToken, apiKey, apiSecret, testnet?1:0]
+  );
   res.json({success:true});
 });
 
-app.get('/users', (req,res)=>{
-  const rows = db.prepare('SELECT id, apiKey, testnet FROM users').all();
+app.get('/users', async (req,res)=>{
+  const [rows] = await pool.query('SELECT id, userNumber, googleToken, apiKey, testnet FROM users');
   res.json(rows);
 });
 
@@ -65,8 +80,8 @@ async function processUser(user){
   }
 }
 
-function runAutoTrade(){
-  const users = db.prepare('SELECT * FROM users').all();
+async function runAutoTrade(){
+  const [users] = await pool.query('SELECT * FROM users');
   users.forEach(u=> processUser(u));
 }
 
