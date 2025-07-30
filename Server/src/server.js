@@ -100,6 +100,18 @@ app.get('/api/orderbook', async (req, res) => {
   }
 });
 
+app.get('/api/orders', async (req, res) => {
+  try {
+    const result = await restClient.getActiveOrders({ category: 'linear' });
+    const count = result?.result?.list?.length || 0;
+    console.log('Fetched', count, 'active orders');
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Validate API credentials by attempting a private request
 // app.post('/api/validate', async (req, res) => {
 //   const { apiKey, apiSecret, testnet = false } = req.body;
@@ -179,6 +191,64 @@ app.post('/api/order', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('Error placing order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/amend-order', async (req, res) => {
+  try {
+    const { symbol, orderId, qty, price } = req.body;
+
+    const result = await restClient.amendOrder({
+      category: 'linear',
+      symbol,
+      orderId,
+      ...(qty ? { qty: qty.toString() } : {}),
+      ...(price ? { price } : {}),
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('Error amending order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/close-position', async (req, res) => {
+  try {
+    const { symbol, side, qty, positionIdx } = req.body;
+
+    const result = await restClient.submitOrder({
+      category: 'linear',
+      symbol,
+      side,
+      orderType: 'Market',
+      qty: qty.toString(),
+      positionIdx: positionIdx ?? 0,
+      reduceOnly: true,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error closing position:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/trading-stop', async (req, res) => {
+  try {
+    const { symbol, takeProfit, stopLoss, positionIdx } = req.body;
+
+    const result = await restClient.setTradingStop({
+      category: 'linear',
+      symbol,
+      ...(takeProfit ? { takeProfit } : {}),
+      ...(stopLoss ? { stopLoss } : {}),
+      positionIdx: positionIdx ?? 0,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error updating position:', err);
     res.status(500).json({ error: err.message });
   }
 });
