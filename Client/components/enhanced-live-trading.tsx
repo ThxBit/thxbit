@@ -13,6 +13,7 @@ import { useTradingStore } from "@/lib/trading-store"
 import { bybitService } from "@/lib/bybit-client"
 import { EnhancedTradingChart } from "@/components/enhanced-trading-chart"
 import { RealTimeOrderBook } from "@/components/real-time-order-book"
+import { toast } from "@/hooks/use-toast"
 import { EnhancedPositionManager } from "@/components/enhanced-position-manager"
 import { TrendingUp, TrendingDown, AlertTriangle, Wifi, WifiOff } from "lucide-react"
 
@@ -35,6 +36,7 @@ export function EnhancedLiveTrading() {
     updateTicker,
     updateOrderbook,
     placeOrder,
+    placeMarketOrder,
     refreshAccountData,
     setError,
   } = useTradingStore()
@@ -127,16 +129,63 @@ export function EnhancedLiveTrading() {
         positionIdx: positionType === "long" ? 1 : 2,
       }
 
-      await placeOrder(orderParams)
+      const result = await placeOrder(orderParams)
+
+      if (result?.retCode === 0) {
+        toast({
+          title: "주문 성공",
+          description: `${side} ${amount} @ ${price || currentPrice}`,
+        })
+      } else {
+        setError(result?.retMsg || "주문 실패")
+        return
+      }
 
       // Reset form
       setAmount("")
       setPrice("")
 
-      // Show success message
-      setError(null)
     } catch (error) {
       console.error("Order placement failed:", error)
+      setError(error instanceof Error ? error.message : "Order failed")
+    } finally {
+      setIsPlacingOrder(false)
+    }
+  }
+
+  const handleMarketOrder = async () => {
+    if (!amount) {
+      setError("수량을 입력해주세요")
+      return
+    }
+
+    setIsPlacingOrder(true)
+    setError(null)
+
+    try {
+      const params = {
+        symbol: selectedSymbol,
+        side,
+        qty: amount,
+        leverage: Number.parseInt(leverage),
+        positionIdx: positionType === "long" ? 1 : 2,
+      }
+
+      const result = await placeMarketOrder(params)
+
+      if (result?.retCode === 0) {
+        toast({
+          title: "시장가 주문 성공",
+          description: `${side} ${amount} @ 시장가`,
+        })
+        setAmount("")
+        setPrice("")
+      } else {
+        setError(result?.retMsg || "주문 실패")
+      }
+    } catch (error) {
+      console.error("Market order failed:", error)
+      setError(error instanceof Error ? error.message : "Order failed")
     } finally {
       setIsPlacingOrder(false)
     }
@@ -334,6 +383,18 @@ export function EnhancedLiveTrading() {
                 {isPlacingOrder ? "주문 중..." : `${side === "Buy" ? "매수" : "매도"} 주문`}
               </Button>
 
+              {/* Market Order Button */}
+              <Button
+                variant="outline"
+                className={`w-full ${
+                  side === "Buy" ? "border-green-600 text-green-700" : "border-red-600 text-red-700"
+                }`}
+                onClick={handleMarketOrder}
+                disabled={isPlacingOrder || !amount}
+              >
+                {isPlacingOrder ? "주문 중..." : `시장가 ${side === "Buy" ? "매수" : "매도"}`}
+              </Button>
+
               {/* Risk Warning */}
               {Number.parseInt(leverage) > 10 && (
                 <Alert variant="destructive">
@@ -353,7 +414,10 @@ export function EnhancedLiveTrading() {
           </Card>
 
           {/* Real-time Order Book */}
-          <RealTimeOrderBook symbol={selectedSymbol} />
+          <RealTimeOrderBook
+            symbol={selectedSymbol}
+            onPriceClick={(p) => setPrice(p.toString())}
+          />
         </div>
       </div>
 

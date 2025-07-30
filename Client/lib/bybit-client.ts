@@ -182,9 +182,34 @@ export class BybitService {
         throw new Error(`Server error ${res.status}: ${message}`)
       }
       const data = await res.json()
-      return data.result
+      return data
     } catch (error) {
       console.error("Error placing order:", error)
+      throw error
+    }
+  }
+
+  async placeMarketOrder(params: {
+    symbol: string
+    side: "Buy" | "Sell"
+    qty: string
+    leverage?: number
+    positionIdx?: number
+  }) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/market-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data
+    } catch (error) {
+      console.error("Error placing market order:", error)
       throw error
     }
   }

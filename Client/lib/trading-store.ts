@@ -38,6 +38,7 @@ interface TradingState {
   updateOrderbook: (symbol: string, data: any) => void;
   refreshAccountData: () => Promise<void>;
   placeOrder: (orderParams: any) => Promise<any>;
+  placeMarketOrder: (orderParams: any) => Promise<any>;
   setError: (error: string | null) => void;
 }
 
@@ -147,6 +148,17 @@ export const useTradingStore = create<TradingState>()(
     try {
       const result = await bybitService.placeOrder(orderParams);
       get().refreshAccountData(); // Refresh after order
+      return result;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : "Order failed" });
+      throw error;
+    }
+  },
+
+  placeMarketOrder: async (orderParams: any) => {
+    try {
+      const result = await bybitService.placeMarketOrder(orderParams);
+      get().refreshAccountData();
       return result;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Order failed" });

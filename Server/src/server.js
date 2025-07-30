@@ -183,6 +183,35 @@ app.post('/api/order', async (req, res) => {
   }
 });
 
+app.post('/api/market-order', async (req, res) => {
+  try {
+    const { symbol, side, qty, leverage, positionIdx } = req.body;
+
+    if (leverage) {
+      await restClient.setLeverage({
+        category: 'linear',
+        symbol,
+        buyLeverage: leverage.toString(),
+        sellLeverage: leverage.toString(),
+      });
+    }
+
+    const result = await restClient.submitOrder({
+      category: 'linear',
+      symbol,
+      side,
+      orderType: 'Market',
+      qty: qty.toString(),
+      positionIdx: positionIdx ?? 0,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error placing market order:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/gpt', async (req, res) => {
   try {
     const coinInfo = req.body;

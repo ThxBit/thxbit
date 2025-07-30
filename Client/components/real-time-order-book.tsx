@@ -13,9 +13,10 @@ interface OrderBookEntry {
 
 interface RealTimeOrderBookProps {
   symbol: string
+  onPriceClick?: (price: number) => void
 }
 
-export function RealTimeOrderBook({ symbol }: RealTimeOrderBookProps) {
+export function RealTimeOrderBook({ symbol, onPriceClick }: RealTimeOrderBookProps) {
   const { orderbooks, isTestnet } = useTradingStore()
   const [asks, setAsks] = useState<OrderBookEntry[]>([])
   const [bids, setBids] = useState<OrderBookEntry[]>([])
@@ -87,8 +88,7 @@ export function RealTimeOrderBook({ symbol }: RealTimeOrderBookProps) {
                   key={index}
                   className="relative grid grid-cols-3 gap-2 p-1 hover:bg-red-50 cursor-pointer"
                   onClick={() => {
-                    // Handle price click for quick order
-                    console.log("Selected ask price:", ask.price)
+                    onPriceClick?.(ask.price)
                   }}
                 >
                   {/* Volume bar background */}
@@ -121,8 +121,7 @@ export function RealTimeOrderBook({ symbol }: RealTimeOrderBookProps) {
                   key={index}
                   className="relative grid grid-cols-3 gap-2 p-1 hover:bg-green-50 cursor-pointer"
                   onClick={() => {
-                    // Handle price click for quick order
-                    console.log("Selected bid price:", bid.price)
+                    onPriceClick?.(bid.price)
                   }}
                 >
                   {/* Volume bar background */}
