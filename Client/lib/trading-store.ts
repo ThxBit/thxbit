@@ -38,6 +38,8 @@ interface TradingState {
   updateOrderbook: (symbol: string, data: any) => void;
   refreshAccountData: () => Promise<void>;
   placeOrder: (orderParams: any) => Promise<any>;
+  closePosition: (params: any) => Promise<any>;
+  updatePosition: (params: any) => Promise<any>;
   setError: (error: string | null) => void;
 }
 
@@ -132,12 +134,13 @@ export const useTradingStore = create<TradingState>()(
 
   refreshAccountData: async () => {
     try {
-      const [balance, positions] = await Promise.all([
+      const [balance, positions, orders] = await Promise.all([
         bybitService.getAccountBalance(),
         bybitService.getPositions(),
+        bybitService.getActiveOrders(),
       ]);
 
-      set({ balance, positions, error: null });
+      set({ balance, positions, orders, error: null });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown error" });
     }
@@ -150,6 +153,28 @@ export const useTradingStore = create<TradingState>()(
       return result;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Order failed" });
+      throw error;
+    }
+  },
+
+  closePosition: async (params: any) => {
+    try {
+      const result = await bybitService.closePosition(params);
+      get().refreshAccountData();
+      return result;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Close failed' });
+      throw error;
+    }
+  },
+
+  updatePosition: async (params: any) => {
+    try {
+      const result = await bybitService.setTradingStop(params);
+      get().refreshAccountData();
+      return result;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Update failed' });
       throw error;
     }
   },
