@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useTradingStore } from "@/lib/trading-store"
 import { bybitService } from "@/lib/bybit-client"
-import { EnhancedTradingChart } from "@/components/enhanced-trading-chart"
+import { BasicCandlestickChart } from "@/components/basic-candlestick-chart"
 import { RealTimeOrderBook } from "@/components/real-time-order-book"
 import { EnhancedPositionManager } from "@/components/enhanced-position-manager"
 import { TrendingUp, TrendingDown, AlertTriangle, Wifi, WifiOff } from "lucide-react"
@@ -202,7 +202,7 @@ export function EnhancedLiveTrading() {
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         {/* Enhanced Chart */}
         <div className="xl:col-span-3">
-          <EnhancedTradingChart symbol={selectedSymbol} />
+          <BasicCandlestickChart symbol={selectedSymbol} />
         </div>
 
         {/* Enhanced Order Panel */}

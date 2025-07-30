@@ -6,6 +6,7 @@ import {
   CrosshairMoveEventParams,
   ColorType,
   Time,
+  LastPriceAnimationMode,
 } from "lightweight-charts";
 
 export interface Candle {
@@ -48,6 +49,8 @@ export function LightweightCandlestickChart({ data }: Props) {
         },
         timeScale: { borderColor: "#374151" },
         crosshair: { mode: 1 },
+        handleScroll: { mouseWheel: false },
+        handleScale: { mouseWheel: false },
       });
       seriesRef.current = chartRef.current.addCandlestickSeries({
         upColor: "#22c55e",
@@ -55,6 +58,7 @@ export function LightweightCandlestickChart({ data }: Props) {
         borderVisible: false,
         wickUpColor: "#22c55e",
         wickDownColor: "#ef4444",
+        lastPriceAnimation: LastPriceAnimationMode.Disabled,
       });
       chartRef.current.timeScale().fitContent();
 
@@ -67,8 +71,20 @@ export function LightweightCandlestickChart({ data }: Props) {
       };
       resize();
       window.addEventListener("resize", resize);
+      const wheel = (e: WheelEvent) => {
+        if (!e.ctrlKey || !chartRef.current) return;
+        e.preventDefault();
+        const ts = chartRef.current.timeScale();
+        const opts = ts.options();
+        const current = opts.barSpacing;
+        const factor = e.deltaY > 0 ? 1.1 : 0.9;
+        const next = Math.max(1, Math.min(50, current * factor));
+        ts.applyOptions({ barSpacing: next });
+      };
+      containerRef.current.addEventListener("wheel", wheel, { passive: false });
       return () => {
         window.removeEventListener("resize", resize);
+        containerRef.current?.removeEventListener("wheel", wheel);
         chartRef.current?.remove();
       };
     }
@@ -77,7 +93,9 @@ export function LightweightCandlestickChart({ data }: Props) {
   useEffect(() => {
     if (!seriesRef.current) {
       if (chartRef.current) {
-        seriesRef.current = chartRef.current.addCandlestickSeries();
+        seriesRef.current = chartRef.current.addCandlestickSeries({
+          lastPriceAnimation: LastPriceAnimationMode.Disabled,
+        });
       } else {
         return;
       }
@@ -97,30 +115,32 @@ export function LightweightCandlestickChart({ data }: Props) {
     lengthRef.current = sorted.length;
   }, [data]);
 
-  useEffect(() => {
-    const chart = chartRef.current;
-    const series = seriesRef.current;
-    if (!chart || !series) return;
-    const handler = (param: CrosshairMoveEventParams) => {
-      if (param.time && param.seriesData.size) {
-        const d = param.seriesData.get(series) as Candle | undefined;
-        if (d) setHover(d);
-      } else {
-        setHover(null);
-      }
-    };
-    chart.subscribeCrosshairMove(handler);
-    return () => chart.unsubscribeCrosshairMove(handler);
-  }, [data]);
+  // useEffect(() => {
+  //   const chart = chartRef.current;
+  //   const series = seriesRef.current;
+  //   if (!chart || !series) return;
+  //   const handler = (param: CrosshairMoveEventParams) => {
+  //     if (param.time && param.seriesData.size) {
+  //       const d = param.seriesData.get(series) as Candle | undefined;
+  //       if (d) setHover(d);
+  //     } else {
+  //       setHover(null);
+  //     }
+  //   };
+  //   chart.subscribeCrosshairMove(handler);
+  //   return () => chart.unsubscribeCrosshairMove(handler);
+  // }, [data]);
 
   return (
     <div className="space-y-1">
       <div ref={containerRef} className="w-full h-96" />
+      {/*
       {hover && (
         <div className="text-xs text-center text-white">
           H: {hover.high} L: {hover.low}
         </div>
       )}
+      */}
     </div>
   );
 }
