@@ -105,13 +105,17 @@ export function BasicCandlestickChart({ symbol }: Props) {
             close: Number(k[4]),
           }));
           combined = [...chunk, ...combined];
-          start = Number(list[0][0]) - msMap[timeframe] * 200;
+          start = Number(list[0][0]) - msMap[timeframe] * 200 - 1;
         } catch (err) {
           console.error("Failed to fetch klines", err);
           break;
         }
       }
       if (!cancelled) {
+        combined.sort((a, b) => Number(a.time) - Number(b.time));
+        combined = combined.filter(
+          (c, i, arr) => i === 0 || c.time !== arr[i - 1].time,
+        );
         setCandles(combined);
         unsub = bybitService.subscribeToKlines(
           symbol,
@@ -136,7 +140,10 @@ export function BasicCandlestickChart({ symbol }: Props) {
                 updated.push(newItem);
               }
               updated.sort((a, b) => Number(a.time) - Number(b.time));
-              return updated.slice(-1000);
+              const dedup = updated.filter(
+                (c, i, arr) => i === 0 || c.time !== arr[i - 1].time,
+              );
+              return dedup.slice(-1000);
             });
           },
         );
