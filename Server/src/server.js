@@ -3,10 +3,19 @@ const express = require('express');
 const cors = require('cors');
 const { RestClientV5 } = require('bybit-api');
 const axios = require('axios');
+const { connectRedis, redis } = require('./redis-client');
+const { OhlcvService } = require('./ohlcv-service');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const SUPPORTED_SYMBOLS = (process.env.SYMBOLS ||
+  'BTCUSDT,ETHUSDT,SOLUSDT,ADAUSDT')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const DEFAULT_SYMBOL = SUPPORTED_SYMBOLS[0];
 
 let restClient = new RestClientV5({
   key: process.env.BYBIT_API_KEY,
@@ -29,10 +38,24 @@ initRestClient({
   testnet: process.env.BYBIT_TESTNET === 'true',
 });
 
+const services = {};
+async function getService(symbol) {
+  if (!services[symbol]) {
+    const svc = new OhlcvService(symbol);
+    await svc.init();
+    services[symbol] = svc;
+  }
+  return services[symbol];
+}
+
+connectRedis()
+  .then(() => Promise.all(SUPPORTED_SYMBOLS.map(getService)))
+  .catch((err) => console.error('Redis connection failed', err));
+
 app.get('/api/klines', async (req, res) => {
   try {
     const {
-      symbol = 'BTCUSDT',
+      symbol = DEFAULT_SYMBOL,
       interval = '1',
       limit = '200',
       category = 'linear',
@@ -50,6 +73,29 @@ app.get('/api/klines', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('Error fetching klines:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/ohlcv', async (req, res) => {
+  try {
+    const { symbol = DEFAULT_SYMBOL, interval = '1m', limit = '200' } = req.query;
+    const svc = await getService(symbol);
+    const list = await svc.getOhlcv(interval, parseInt(limit, 10));
+    res.json({ list });
+  } catch (err) {
+    console.error('Error fetching ohlcv:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/price', async (req, res) => {
+  try {
+    const { symbol = DEFAULT_SYMBOL } = req.query;
+    const price = await redis.get(`price:${symbol}`);
+    res.json({ price: price ? Number(price) : null });
+  } catch (err) {
+    console.error('Error fetching price:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -76,7 +122,7 @@ app.get('/api/positions', async (req, res) => {
 
 app.get('/api/ticker', async (req, res) => {
   try {
-    const { symbol = 'BTCUSDT', category = 'linear' } = req.query;
+    const { symbol = DEFAULT_SYMBOL, category = 'linear' } = req.query;
     const result = await restClient.getTickers({ category, symbol });
     res.json(result);
   } catch (err) {
@@ -87,7 +133,7 @@ app.get('/api/ticker', async (req, res) => {
 
 app.get('/api/orderbook', async (req, res) => {
   try {
-    const { symbol = 'BTCUSDT', category = 'linear', limit = 25 } = req.query;
+    const { symbol = DEFAULT_SYMBOL, category = 'linear', limit = 25 } = req.query;
     const result = await restClient.getOrderbook({
       category,
       symbol,

@@ -119,14 +119,14 @@ export class BybitService {
     if (params.start) query.set('start', params.start.toString())
     if (params.end) query.set('end', params.end.toString())
 
-    const res = await fetch(`${SERVER_URL}/api/klines?${query.toString()}`)
+    const res = await fetch(`${SERVER_URL}/api/ohlcv?${query.toString()}`)
     if (!res.ok) {
       const message = await res.text()
       throw new Error(`Server error ${res.status}: ${message}`)
     }
 
     const data = await res.json()
-    return data.result?.list || []
+    return data.list || data.result?.list || []
   }
 
   async getAccountBalance() {
