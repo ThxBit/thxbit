@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useTradingStore } from "@/lib/trading-store"
@@ -41,11 +40,16 @@ export function EnhancedLiveTrading() {
   } = useTradingStore()
 
   const [orderType, setOrderType] = useState<"Market" | "Limit">("Limit")
-  const [side, setSide] = useState<"Buy" | "Sell">("Buy")
+  const [position, setPosition] = useState<"long" | "short" | "auto">("long")
   const [amount, setAmount] = useState("")
   const [price, setPrice] = useState("")
   const [leverage, setLeverage] = useState("1")
-  const [positionType, setPositionType] = useState<"long" | "short">("long")
+  const [triggerPrice, setTriggerPrice] = useState("")
+  const [triggerBy, setTriggerBy] = useState<"LastPrice" | "MarkPrice" | "IndexPrice">("LastPrice")
+  const [timeInForce, setTimeInForce] = useState<"GTC" | "IOC" | "FOK" | "PostOnly">("GTC")
+  const [enableTpSl, setEnableTpSl] = useState(false)
+  const [takeProfit, setTakeProfit] = useState("")
+  const [stopLoss, setStopLoss] = useState("")
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
 
   // Subscribe to real-time data
@@ -131,14 +135,29 @@ export function EnhancedLiveTrading() {
     setError(null)
 
     try {
-      const orderParams = {
+      const computedSide = position === 'short' ? 'Sell' : 'Buy'
+      const positionIdx = position === 'auto' ? 0 : position === 'long' ? 1 : 2
+
+      const orderParams: any = {
         symbol: selectedSymbol,
-        side,
+        side: computedSide,
         orderType,
         qty: amount,
-        price: orderType === "Market" ? undefined : price,
+        positionIdx,
         leverage: Number.parseInt(leverage),
-        positionIdx: positionType === "long" ? 1 : 2,
+        timeInForce,
+      }
+
+      if (orderType === 'Limit') {
+        orderParams.price = price
+      }
+      if (triggerPrice) {
+        orderParams.triggerPrice = triggerPrice
+        orderParams.triggerBy = triggerBy
+      }
+      if (enableTpSl) {
+        if (takeProfit) orderParams.takeProfit = takeProfit
+        if (stopLoss) orderParams.stopLoss = stopLoss
       }
 
       await placeOrder(orderParams)
@@ -146,6 +165,10 @@ export function EnhancedLiveTrading() {
       // Reset form
       setAmount("")
       setPrice("")
+      setTriggerPrice("")
+      setTakeProfit("")
+      setStopLoss("")
+      setEnableTpSl(false)
 
       // Show success message
       setError(null)
@@ -233,28 +256,17 @@ export function EnhancedLiveTrading() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Buy/Sell Tabs */}
-              <Tabs value={side} onValueChange={(value) => setSide(value as "Buy" | "Sell")}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="Buy" className="text-green-600">
-                    매수
-                  </TabsTrigger>
-                  <TabsTrigger value="Sell" className="text-red-600">
-                    매도
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              {/* Position Type */}
+              {/* Position Selection */}
               <div className="space-y-2">
-                <Label>포지션 타입</Label>
-                <Select value={positionType} onValueChange={(value) => setPositionType(value as "long" | "short")}>
+                <Label>포지션 선택</Label>
+                <Select value={position} onValueChange={(v) => setPosition(v as "long" | "short" | "auto")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="long">롱 (Long)</SelectItem>
-                    <SelectItem value="short">숏 (Short)</SelectItem>
+                    <SelectItem value="long">롱 포지션</SelectItem>
+                    <SelectItem value="short">숏 포지션</SelectItem>
+                    <SelectItem value="auto">자동 포지션</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -288,6 +300,27 @@ export function EnhancedLiveTrading() {
                   <SelectContent>
                     <SelectItem value="Market">시장가</SelectItem>
                     <SelectItem value="Limit">지정가</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Trigger Price */}
+              <div className="space-y-2">
+                <Label>트리거 가격</Label>
+                <Input
+                  type="number"
+                  placeholder="트리거 가격"
+                  value={triggerPrice}
+                  onChange={(e) => setTriggerPrice(e.target.value)}
+                />
+                <Select value={triggerBy} onValueChange={(v) => setTriggerBy(v as "LastPrice" | "MarkPrice" | "IndexPrice")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LastPrice">마지막 체결가</SelectItem>
+                    <SelectItem value="MarkPrice">마크 가격</SelectItem>
+                    <SelectItem value="IndexPrice">지수 가격</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -340,15 +373,57 @@ export function EnhancedLiveTrading() {
                 </div>
               </div>
 
+              {/* Take Profit / Stop Loss */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>TP/SL 설정</Label>
+                  <input
+                    type="checkbox"
+                    checked={enableTpSl}
+                    onChange={(e) => setEnableTpSl(e.target.checked)}
+                  />
+                </div>
+                {enableTpSl && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Take Profit"
+                      value={takeProfit}
+                      onChange={(e) => setTakeProfit(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Stop Loss"
+                      value={stopLoss}
+                      onChange={(e) => setStopLoss(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Time In Force */}
+              <div className="space-y-2">
+                <Label>주문 조건</Label>
+                <Select value={timeInForce} onValueChange={(v) => setTimeInForce(v as "GTC" | "IOC" | "FOK" | "PostOnly")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GTC">Good-Till-Canceled</SelectItem>
+                    <SelectItem value="IOC">Immediate-Or-Cancel</SelectItem>
+                    <SelectItem value="FOK">Fill-Or-Kill</SelectItem>
+                    <SelectItem value="PostOnly">Post-Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Order Button */}
               <Button
-                className={`w-full ${
-                  side === "Buy" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
-                }`}
+                className="w-full bg-purple-600 hover:bg-purple-700"
                 onClick={handlePlaceOrder}
-                disabled={isPlacingOrder || !amount || (orderType === "Limit" && !price)}
+                disabled={isPlacingOrder || !amount || (orderType === 'Limit' && !price)}
               >
-                {isPlacingOrder ? "주문 중..." : `${side === "Buy" ? "매수" : "매도"} 주문`}
+                {isPlacingOrder ? '주문 중...' : '주문 실행'}
               </Button>
 
               {/* Risk Warning */}

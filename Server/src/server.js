@@ -168,7 +168,20 @@ app.post('/api/set-credentials', (req, res) => {
 
 app.post('/api/order', async (req, res) => {
   try {
-    const { symbol, side, orderType = 'Market', qty, price, leverage, positionIdx } = req.body;
+    const {
+      symbol,
+      side,
+      orderType = 'Market',
+      qty,
+      price,
+      leverage,
+      positionIdx,
+      triggerPrice,
+      triggerBy,
+      takeProfit,
+      stopLoss,
+      timeInForce,
+    } = req.body;
 
     if (leverage) {
       await restClient.setLeverage({
@@ -185,7 +198,12 @@ app.post('/api/order', async (req, res) => {
       side,
       orderType,
       qty: qty.toString(),
-      price,
+      ...(price ? { price } : {}),
+      ...(triggerPrice ? { triggerPrice } : {}),
+      ...(triggerBy ? { triggerBy } : {}),
+      ...(takeProfit ? { takeProfit } : {}),
+      ...(stopLoss ? { stopLoss } : {}),
+      ...(timeInForce ? { timeInForce } : {}),
       positionIdx: positionIdx ?? 0,
     });
     res.json(result);
