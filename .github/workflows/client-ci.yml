@@ -2,9 +2,8 @@ name: Client CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - "release/*"
 
 jobs:
   client-ci:
@@ -19,14 +18,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: 'npm'
+          cache: "npm"
 
       - name: Use Node.js from Client/package.json
         if: steps.nvmrc.outcome == 'skipped'
         uses: actions/setup-node@v4
         with:
           node-version-file: Client/package.json
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install, lint and build client
         run: |
