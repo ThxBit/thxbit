@@ -2,9 +2,8 @@ name: 🚀 tailgrids react release
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - "release/*"
 
 jobs:
   release:
