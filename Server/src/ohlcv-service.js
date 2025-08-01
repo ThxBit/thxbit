@@ -22,8 +22,7 @@ class OhlcvService {
     const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${this.symbol}&interval=1&limit=${limit}`;
     const { data } = await axios.get(url);
     const list = (data?.result?.list || []).sort(
-      (a, b) =>
-        Number(a.start || a.t || a[0]) - Number(b.start || b.t || b[0])
+      (a, b) => Number(a.start || a.t || a[0]) - Number(b.start || b.t || b[0]),
     );
 
     let last = null;

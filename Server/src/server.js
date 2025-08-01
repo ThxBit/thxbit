@@ -10,8 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SUPPORTED_SYMBOLS = (process.env.SYMBOLS ||
-  'BTCUSDT,ETHUSDT,SOLUSDT,ADAUSDT')
+const SUPPORTED_SYMBOLS = (
+  process.env.SYMBOLS || 'BTCUSDT,ETHUSDT,SOLUSDT,ADAUSDT'
+)
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -79,7 +80,11 @@ app.get('/api/klines', async (req, res) => {
 
 app.get('/api/ohlcv', async (req, res) => {
   try {
-    const { symbol = DEFAULT_SYMBOL, interval = '1m', limit = '200' } = req.query;
+    const {
+      symbol = DEFAULT_SYMBOL,
+      interval = '1m',
+      limit = '200',
+    } = req.query;
     const svc = await getService(symbol);
     const list = await svc.getOhlcv(interval, parseInt(limit, 10));
     res.json({ list });
@@ -102,7 +107,9 @@ app.get('/api/price', async (req, res) => {
 
 app.get('/api/balance', async (req, res) => {
   try {
-    const result = await restClient.getWalletBalance({ accountType: 'UNIFIED' });
+    const result = await restClient.getWalletBalance({
+      accountType: 'UNIFIED',
+    });
     res.json(result);
   } catch (err) {
     console.error('Error fetching balance:', err);
@@ -133,7 +140,11 @@ app.get('/api/ticker', async (req, res) => {
 
 app.get('/api/orderbook', async (req, res) => {
   try {
-    const { symbol = DEFAULT_SYMBOL, category = 'linear', limit = 25 } = req.query;
+    const {
+      symbol = DEFAULT_SYMBOL,
+      category = 'linear',
+      limit = 25,
+    } = req.query;
     const result = await restClient.getOrderbook({
       category,
       symbol,
@@ -214,7 +225,15 @@ app.post('/api/set-credentials', (req, res) => {
 
 app.post('/api/order', async (req, res) => {
   try {
-    const { symbol, side, orderType = 'Market', qty, price, leverage, positionIdx } = req.body;
+    const {
+      symbol,
+      side,
+      orderType = 'Market',
+      qty,
+      price,
+      leverage,
+      positionIdx,
+    } = req.body;
 
     if (leverage) {
       await restClient.setLeverage({
@@ -318,9 +337,7 @@ app.post('/api/gpt', async (req, res) => {
       {
         model: 'gpt-4o',
         temperature: 0.3,
-        messages: [
-          { role: 'user', content: prompt },
-        ],
+        messages: [{ role: 'user', content: prompt }],
       },
       {
         headers: {
@@ -334,7 +351,10 @@ app.post('/api/gpt', async (req, res) => {
     console.log('GPT Response:', text);
     res.json({ text });
   } catch (err) {
-    console.error('Error fetching GPT analysis:', err.response?.data || err.message);
+    console.error(
+      'Error fetching GPT analysis:',
+      err.response?.data || err.message,
+    );
     res.status(500).json({ error: 'Failed to fetch GPT analysis' });
   }
 });
