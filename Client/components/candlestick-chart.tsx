@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 
 export interface Candle {
   time: number
@@ -17,30 +17,40 @@ interface Props {
   height?: number
 }
 
-export function CandlestickChart({ data, width = 800, height = 400 }: Props) {
+export function CandlestickChart({ data, width = 600, height = 300 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [zoom, setZoom] = useState(1)
+  const [hover, setHover] = useState<{ x: number; y: number; candle: Candle } | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !data.length) return
 
+    const dpr = window.devicePixelRatio || 1
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
+    ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, width, height)
 
-    // price range
-    const prices = data.flatMap(d => [d.high, d.low])
+    const visibleCount = Math.max(10, Math.min(data.length, Math.floor(data.length / zoom)))
+    const visible = data.slice(-visibleCount)
+
+    const prices = visible.flatMap((d) => [d.high, d.low])
     const minPrice = Math.min(...prices)
     const maxPrice = Math.max(...prices)
     const priceRange = maxPrice - minPrice || 1
 
-    const candleWidth = (width - 100) / data.length
+    const candleWidth = (width - 100) / visibleCount
     const chartHeight = height - 80
 
-    // grid
     ctx.strokeStyle = "#2a2a2a"
-    ctx.lineWidth = 1
+    ctx.lineWidth = 1 / dpr
 
     for (let i = 0; i <= 10; i++) {
       const y = 40 + (chartHeight / 10) * i
@@ -58,7 +68,6 @@ export function CandlestickChart({ data, width = 800, height = 400 }: Props) {
       ctx.stroke()
     }
 
-    // price labels
     ctx.fillStyle = "#888"
     ctx.font = "12px monospace"
     ctx.textAlign = "right"
@@ -68,8 +77,7 @@ export function CandlestickChart({ data, width = 800, height = 400 }: Props) {
       ctx.fillText(price.toFixed(0), 45, y + 4)
     }
 
-    // candles
-    data.forEach((candle, index) => {
+    visible.forEach((candle, index) => {
       const x = 50 + index * candleWidth + candleWidth / 2
       const openY = 40 + ((maxPrice - candle.open) / priceRange) * chartHeight
       const closeY = 40 + ((maxPrice - candle.close) / priceRange) * chartHeight
@@ -78,7 +86,7 @@ export function CandlestickChart({ data, width = 800, height = 400 }: Props) {
       const isGreen = candle.close > candle.open
 
       ctx.strokeStyle = isGreen ? "#00ff88" : "#ff4444"
-      ctx.lineWidth = 1
+      ctx.lineWidth = 1 / dpr
       ctx.beginPath()
       ctx.moveTo(x, highY)
       ctx.lineTo(x, lowY)
@@ -87,17 +95,66 @@ export function CandlestickChart({ data, width = 800, height = 400 }: Props) {
       ctx.fillStyle = isGreen ? "#00ff88" : "#ff4444"
       const bodyTop = Math.min(openY, closeY)
       const bodyHeight = Math.abs(closeY - openY)
-      ctx.fillRect(x - candleWidth / 4, bodyTop, candleWidth / 2, Math.max(bodyHeight, 1))
+      ctx.fillRect(
+        x - candleWidth / 4,
+        bodyTop,
+        candleWidth / 2,
+        Math.max(bodyHeight, 1 / dpr)
+      )
     })
-  }, [data, width, height])
+  }, [data, width, height, zoom])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      setZoom((z) => Math.min(3, Math.max(0.5, z - e.deltaY * 0.001)))
+    }
+    const onMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      const visibleCount = Math.max(10, Math.min(data.length, Math.floor(data.length / zoom)))
+      const candleWidth = (width - 100) / visibleCount
+      const index = Math.floor((x - 50) / candleWidth)
+      const visible = data.slice(-visibleCount)
+
+      if (index >= 0 && index < visible.length) {
+        setHover({ x, y, candle: visible[index] })
+      } else {
+        setHover(null)
+      }
+    }
+    const onLeave = () => setHover(null)
+
+    canvas.addEventListener("wheel", onWheel, { passive: false })
+    canvas.addEventListener("mousemove", onMove)
+    canvas.addEventListener("mouseleave", onLeave)
+    return () => {
+      canvas.removeEventListener("wheel", onWheel)
+      canvas.removeEventListener("mousemove", onMove)
+      canvas.removeEventListener("mouseleave", onLeave)
+    }
+  }, [data, width, zoom])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      className="border border-gray-800 bg-gray-900 w-full"
-    />
+    <div className="relative" style={{ width, height }}>
+      <canvas ref={canvasRef} className="border border-gray-800 bg-gray-900 w-full h-full" />
+      {hover && (
+        <div
+          className="absolute text-xs bg-black bg-opacity-75 text-white p-2 rounded border border-gray-700 pointer-events-none"
+          style={{ left: hover.x + 10, top: hover.y + 10 }}
+        >
+          <div>O: {hover.candle.open.toFixed(2)}</div>
+          <div>H: {hover.candle.high.toFixed(2)}</div>
+          <div>L: {hover.candle.low.toFixed(2)}</div>
+          <div>C: {hover.candle.close.toFixed(2)}</div>
+        </div>
+      )}
+    </div>
   )
 }
 
