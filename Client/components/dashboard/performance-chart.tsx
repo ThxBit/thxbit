@@ -15,7 +15,7 @@ export function PerformanceChart() {
       { date: "01/23", portfolio: 125430, benchmark: 123500 },
     ],
     strategies: [
-      { name: "GPT Momentum", return: 8.2, sharpe: 1.45, maxDrawdown: -3.2, trades: 45 },
+      { name: "Gemini Momentum", return: 8.2, sharpe: 1.45, maxDrawdown: -3.2, trades: 45 },
       { name: "Mean Reversion", return: 4.1, sharpe: 1.12, maxDrawdown: -2.1, trades: 32 },
       { name: "Breakout Hunter", return: -1.2, sharpe: -0.23, maxDrawdown: -5.8, trades: 28 },
     ],

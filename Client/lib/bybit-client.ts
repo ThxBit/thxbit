@@ -279,9 +279,28 @@ export class BybitService {
     }
   }
 
-  async getGptAnalysis(data: any) {
+  // async getGptAnalysis(data: any) {
+  //   try {
+  //     const res = await fetch(`${SERVER_URL}/api/gpt`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify(data),
+  //     })
+  //     if (!res.ok) {
+  //       const message = await res.text()
+  //       throw new Error(`Server error ${res.status}: ${message}`)
+  //     }
+  //     const result = await res.json()
+  //     return result.text as string
+  //   } catch (error) {
+  //     console.error('Error fetching GPT analysis:', error)
+  //     throw error
+  //   }
+  // }
+
+  async getGeminiAnalysis(data: any) {
     try {
-      const res = await fetch(`${SERVER_URL}/api/gpt`, {
+      const res = await fetch(`${SERVER_URL}/api/gemini`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -293,7 +312,7 @@ export class BybitService {
       const result = await res.json()
       return result.text as string
     } catch (error) {
-      console.error('Error fetching GPT analysis:', error)
+      console.error('Error fetching Gemini analysis:', error)
       throw error
     }
   }

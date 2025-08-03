@@ -18,7 +18,7 @@ export function RecentTrades() {
       price: 42350.5,
       pnl: 234.5,
       pnlPercent: 1.1,
-      strategy: "GPT Momentum",
+      strategy: "Gemini Momentum",
       status: "FILLED",
     },
     {
@@ -57,7 +57,7 @@ export function RecentTrades() {
       price: 98.75,
       pnl: -78.3,
       pnlPercent: -1.5,
-      strategy: "GPT Momentum",
+      strategy: "Gemini Momentum",
       status: "FILLED",
     },
     {

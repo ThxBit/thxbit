@@ -11,7 +11,7 @@ export function TradingStrategies() {
   const strategies = [
     {
       id: 1,
-      name: "GPT Momentum Strategy",
+      name: "Gemini Momentum Strategy",
       description: "AI가 분석한 모멘텀 기반 매매 전략",
       status: "active",
       accuracy: 72.5,
@@ -58,7 +58,7 @@ export function TradingStrategies() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">AI 거래 전략</h2>
-          <p className="text-muted-foreground">GPT 추천 전략으로 자동매매를 실행하세요</p>
+          <p className="text-muted-foreground">Gemini 추천 전략으로 자동매매를 실행하세요</p>
         </div>
         <Button>
           <Bot className="mr-2 h-4 w-4" />새 전략 생성

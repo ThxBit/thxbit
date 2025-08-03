@@ -126,7 +126,7 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     macd: false,
     volume: true,
   });
-  const [gptAnswer, setGptAnswer] = useState<string | null>(null);
+  const [geminiAnswer, setGeminiAnswer] = useState<string | null>(null);
   const [isAsking, setIsAsking] = useState(false);
   const lastValidPrice = useRef(0);
   const [loading, setLoading] = useState(false);
@@ -268,10 +268,10 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
     }
   }, [symbol, timeframe, loading])
 
-  const handleAskGpt = async () => {
+  const handleAskGemini = async () => {
     if (chartData.length === 0) return;
     setIsAsking(true);
-    setGptAnswer(null);
+    setGeminiAnswer(null);
     try {
       const payload = {
         symbol,
@@ -279,10 +279,10 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
         rsi: chartData[chartData.length - 1].rsi,
         data: chartData.slice(-20),
       };
-      const text = await bybitService.getGptAnalysis(payload);
-      setGptAnswer(text);
+      const text = await bybitService.getGeminiAnalysis(payload);
+      setGeminiAnswer(text);
     } catch (err: any) {
-      setGptAnswer('오류: ' + (err.message || 'failed'));
+      setGeminiAnswer('오류: ' + (err.message || 'failed'));
     } finally {
       setIsAsking(false);
     }
@@ -552,10 +552,10 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={handleAskGpt}
+            onClick={handleAskGemini}
             disabled={isAsking}
           >
-            {isAsking ? "분석 중..." : "GPT에 이 코인 물어보기"}
+            {isAsking ? "분석 중..." : "Gemini에 이 코인 물어보기"}
           </Button>
         </div>
       </CardHeader>
@@ -584,10 +584,10 @@ export function EnhancedTradingChart({ symbol }: EnhancedTradingChartProps) {
             </div>
           )}
 
-          {gptAnswer && (
+          {geminiAnswer && (
             <Alert>
               <AlertDescription className="whitespace-pre-wrap">
-                {gptAnswer}
+                {geminiAnswer}
               </AlertDescription>
             </Alert>
           )}
