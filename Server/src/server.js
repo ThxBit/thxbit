@@ -307,6 +307,7 @@ app.post('/api/gemini', async (req, res) => {
 
     const response = await axios.post(
       // 👇 더 높은 할당량을 가진 'gemini-1.5-flash-latest' 모델로 변경
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         contents: [
           {
