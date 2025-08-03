@@ -32,7 +32,8 @@ interface Position {
 }
 
 export function EnhancedPositionManager() {
-  const { positions, isSimulationMode, refreshAccountData } = useTradingStore()
+  const { positions, isTestnet, refreshAccountData, closePosition, updatePosition } =
+    useTradingStore()
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
   const [newStopLoss, setNewStopLoss] = useState("")
   const [newTakeProfit, setNewTakeProfit] = useState("")
@@ -47,15 +48,17 @@ export function EnhancedPositionManager() {
     return () => clearInterval(interval)
   }, [refreshAccountData])
 
+
   const handleClosePosition = async (position: Position) => {
     setIsClosing(position.symbol)
 
     try {
-      // Simulate position closing
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Refresh data after closing
-      await refreshAccountData()
+      await closePosition({
+        symbol: position.symbol,
+        side: position.side === "Buy" ? "Sell" : "Buy",
+        qty: position.size,
+        positionIdx: position.positionIdx,
+      })
     } catch (error) {
       console.error("Failed to close position:", error)
     } finally {
@@ -72,15 +75,14 @@ export function EnhancedPositionManager() {
   const handleUpdatePosition = async () => {
     if (editingPosition) {
       try {
-        // Simulate position update
-        console.log("포지션 업데이트:", {
+        await updatePosition({
           symbol: editingPosition.symbol,
-          stopLoss: newStopLoss,
-          takeProfit: newTakeProfit,
+          stopLoss: newStopLoss || undefined,
+          takeProfit: newTakeProfit || undefined,
+          positionIdx: editingPosition.positionIdx,
         })
 
         setEditingPosition(null)
-        await refreshAccountData()
       } catch (error) {
         console.error("Failed to update position:", error)
       }
@@ -114,8 +116,8 @@ export function EnhancedPositionManager() {
           <div>
             <CardTitle className="flex items-center gap-2">
               보유 포지션
-              <Badge variant={isSimulationMode ? "secondary" : "default"}>
-                {isSimulationMode ? "시뮬레이션" : "실제"}
+              <Badge variant={isTestnet ? "secondary" : "default"}>
+                {isTestnet ? "테스트넷" : "메인넷"}
               </Badge>
             </CardTitle>
             <CardDescription>현재 보유 중인 포지션을 실시간으로 관리하세요</CardDescription>

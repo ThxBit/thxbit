@@ -16,7 +16,7 @@ interface RealTimeOrderBookProps {
 }
 
 export function RealTimeOrderBook({ symbol }: RealTimeOrderBookProps) {
-  const { orderbooks, isSimulationMode } = useTradingStore()
+  const { orderbooks, isTestnet } = useTradingStore()
   const [asks, setAsks] = useState<OrderBookEntry[]>([])
   const [bids, setBids] = useState<OrderBookEntry[]>([])
   const [spread, setSpread] = useState(0)
@@ -62,8 +62,8 @@ export function RealTimeOrderBook({ symbol }: RealTimeOrderBookProps) {
         <div className="flex justify-between items-center">
           <CardTitle className="text-sm">호가창</CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant={isSimulationMode ? "secondary" : "default"}>
-              {isSimulationMode ? "시뮬레이션" : "실시간"}
+            <Badge variant={isTestnet ? "secondary" : "default"}>
+              {isTestnet ? "테스트넷" : "메인넷"}
             </Badge>
             {spread > 0 && <Badge variant="outline">스프레드: ${spread.toFixed(2)}</Badge>}
           </div>

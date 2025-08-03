@@ -9,14 +9,12 @@ export interface BybitConfig {
   apiKey?: string
   apiSecret?: string
   testnet?: boolean
-  simulationMode?: boolean
 }
 
 export class BybitService {
   private restClient: RestClientV5 | null = null
   private wsClient: WebsocketClient | null = null
   private config: BybitConfig
-  private isSimulation: boolean
 
   constructor(config: BybitConfig = {}) {
     this.config = {
@@ -24,29 +22,34 @@ export class BybitService {
     apiSecret: process.env.NEXT_PUBLIC_BYBIT_API_SECRET || config.apiSecret,
     testnet:
       config.testnet ?? (process.env.NEXT_PUBLIC_BYBIT_TESTNET === 'true'),
-    simulationMode: config.simulationMode,
   }
-
-  this.isSimulation = this.config.simulationMode ?? false
 
   console.log("Final config:", this.config);
 
-  if (!this.isSimulation && this.config.apiKey && this.config.apiSecret) {
+  if (this.config.apiKey && this.config.apiSecret) {
     this.initializeClients()
   }
   }
 
 
   /** Update API credentials and reinitialize clients if not in simulation mode */
-  setCredentials(apiKey: string, apiSecret: string, testnet = false) {
+  async setCredentials(apiKey: string, apiSecret: string, testnet = false) {
     this.config = {
       ...this.config,
       apiKey,
       apiSecret,
       testnet,
     }
-    if (!this.isSimulation) {
-      this.initializeClients()
+    this.initializeClients()
+
+    try {
+      await fetch(`${SERVER_URL}/api/set-credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, apiSecret, testnet }),
+      })
+    } catch (err) {
+      console.error('Failed to update server credentials:', err)
     }
   }
 
@@ -97,10 +100,36 @@ export class BybitService {
     }
   }
 
-  async getAccountBalance() {
-    if (this.isSimulation) {
-      return this.getSimulatedBalance()
+  /** Fetch historical klines from the local server */
+  async getKlines(params: {
+    symbol: string
+    interval?: string
+    limit?: number
+    category?: string
+    start?: number
+    end?: number
+  }) {
+
+    const query = new URLSearchParams({
+      symbol: params.symbol,
+      interval: params.interval?.toString() || '1',
+      limit: (params.limit || 200).toString(),
+      category: params.category || 'linear',
+    })
+    if (params.start) query.set('start', params.start.toString())
+    if (params.end) query.set('end', params.end.toString())
+
+    const res = await fetch(`${SERVER_URL}/api/klines?${query.toString()}`)
+    if (!res.ok) {
+      const message = await res.text()
+      throw new Error(`Server error ${res.status}: ${message}`)
     }
+
+    const data = await res.json()
+    return data.result?.list || []
+  }
+
+  async getAccountBalance() {
 
     try {
       const res = await fetch(`${SERVER_URL}/api/balance`)
@@ -117,9 +146,6 @@ export class BybitService {
   }
 
   async getPositions() {
-    if (this.isSimulation) {
-      return this.getSimulatedPositions()
-    }
 
     try {
       const res = await fetch(`${SERVER_URL}/api/positions`)
@@ -144,9 +170,6 @@ export class BybitService {
     leverage?: number
     positionIdx?: number
   }) {
-    if (this.isSimulation) {
-      return this.simulateOrder(orderParams)
-    }
 
     try {
       const res = await fetch(`${SERVER_URL}/api/order`, {
@@ -167,9 +190,6 @@ export class BybitService {
   }
 
   async cancelOrder(symbol: string, orderId: string) {
-    if (this.isSimulation) {
-      return { success: true, orderId }
-    }
 
     try {
       if (!this.restClient) throw new Error("REST client not initialized")
@@ -187,186 +207,176 @@ export class BybitService {
     }
   }
 
-  subscribeToTickers(symbols: string[], callback: (data: any) => void) {
-    if (this.isSimulation) {
-      return this.simulateTickerData(symbols, callback)
-    }
-
+  async getActiveOrders() {
     try {
-      if (!this.wsClient) {
-        this.initializeClients()
-        if (!this.wsClient) throw new Error("WebSocket client not initialized")
+      const res = await fetch(`${SERVER_URL}/api/orders`)
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
       }
-
-      this.wsClient.subscribeV5(
-        symbols.map((symbol) => `tickers.${symbol}`),
-        "linear",
-      )
-
-      this.wsClient.on("update", callback)
-
-      return () => {
-        this.wsClient?.unsubscribeV5(
-          symbols.map((symbol) => `tickers.${symbol}`),
-          "linear",
-        )
-      }
+      const data = await res.json()
+      return data.result?.list || []
     } catch (error) {
-      console.error("Error subscribing to tickers:", error)
+      console.error('Error fetching orders:', error)
       throw error
     }
   }
 
-  subscribeToOrderbook(symbol: string, callback: (data: any) => void) {
-    if (this.isSimulation) {
-      return this.simulateOrderbookData(symbol, callback)
-    }
-
+  async amendOrder(params: { symbol: string; orderId: string; qty?: string; price?: string }) {
     try {
-      if (!this.wsClient) {
-        this.initializeClients()
-        if (!this.wsClient) throw new Error("WebSocket client not initialized")
-      }
-
-      this.wsClient.subscribeV5([`orderbook.25.${symbol}`], "linear")
-      this.wsClient.on("update", callback)
-
-      return () => {
-        this.wsClient?.unsubscribeV5([`orderbook.25.${symbol}`], "linear")
-      }
-    } catch (error) {
-      console.error("Error subscribing to orderbook:", error)
-      throw error
-    }
-  }
-
-  // Simulation methods
-  private getSimulatedBalance() {
-    return {
-      totalWalletBalance: "125430.50",
-      totalAvailableBalance: "98234.25",
-      coin: [
-        {
-          coin: "USDT",
-          walletBalance: "125430.50",
-          availableToWithdraw: "98234.25",
-        },
-      ],
-    }
-  }
-
-  private getSimulatedPositions() {
-    return [
-      {
-        symbol: "BTCUSDT",
-        side: "Buy",
-        size: "0.5",
-        entryPrice: "43100",
-        markPrice: "43250",
-        leverage: "10",
-        unrealisedPnl: "750",
-        positionValue: "21625",
-      },
-      {
-        symbol: "ETHUSDT",
-        side: "Sell",
-        size: "2.0",
-        entryPrice: "2590",
-        markPrice: "2580",
-        leverage: "5",
-        unrealisedPnl: "100",
-        positionValue: "5160",
-      },
-    ]
-  }
-
-  private simulateOrder(orderParams: any) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          orderId: `sim_${Date.now()}`,
-          orderLinkId: "",
-          symbol: orderParams.symbol,
-          side: orderParams.side,
-          orderType: orderParams.orderType,
-          qty: orderParams.qty,
-          price: orderParams.price,
-          orderStatus: "Filled",
-        })
-      }, 500)
-    })
-  }
-
-  private simulateTickerData(symbols: string[], callback: (data: any) => void) {
-    const interval = setInterval(() => {
-      symbols.forEach((symbol) => {
-        const basePrice =
-          symbol === "BTCUSDT" ? 43250 : symbol === "ETHUSDT" ? 2580 : symbol === "SOLUSDT" ? 98.5 : 0.485
-
-        callback({
-          topic: `tickers.${symbol}`,
-          data: {
-            symbol,
-            lastPrice: (basePrice * (1 + (Math.random() - 0.5) * 0.002)).toString(),
-            price24hPcnt: ((Math.random() - 0.5) * 0.1).toString(),
-            volume24h: (Math.random() * 1000000).toString(),
-            turnover24h: (Math.random() * 50000000).toString(),
-          },
-        })
+      const res = await fetch(`${SERVER_URL}/api/amend-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
       })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
+    } catch (error) {
+      console.error('Error amending order:', error)
+      throw error
+    }
+  }
+
+  async closePosition(params: { symbol: string; side: 'Buy' | 'Sell'; qty: string; positionIdx?: number }) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/close-position`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
+    } catch (error) {
+      console.error('Error closing position:', error)
+      throw error
+    }
+  }
+
+  async setTradingStop(params: { symbol: string; takeProfit?: string; stopLoss?: string; positionIdx?: number }) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/trading-stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const data = await res.json()
+      return data.result
+    } catch (error) {
+      console.error('Error updating position:', error)
+      throw error
+    }
+  }
+
+  async getGptAnalysis(data: any) {
+    try {
+      const res = await fetch(`${SERVER_URL}/api/gpt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(`Server error ${res.status}: ${message}`)
+      }
+      const result = await res.json()
+      return result.text as string
+    } catch (error) {
+      console.error('Error fetching GPT analysis:', error)
+      throw error
+    }
+  }
+
+  subscribeToTickers(symbols: string[], callback: (data: any) => void) {
+    const interval = setInterval(async () => {
+      for (const symbol of symbols) {
+        try {
+          const res = await fetch(
+            `${SERVER_URL}/api/ticker?symbol=${symbol}&category=linear`,
+          )
+          if (!res.ok) continue
+          const data = await res.json()
+          const ticker = data.result?.list?.[0]
+          if (ticker) {
+            callback({ topic: `tickers.${symbol}`, data: ticker })
+          }
+        } catch (error) {
+          console.error('Error fetching ticker:', error)
+        }
+      }
     }, 2000)
 
     return () => clearInterval(interval)
   }
 
-  private simulateOrderbookData(symbol: string, callback: (data: any) => void) {
-    const interval = setInterval(() => {
-      const basePrice = symbol === "BTCUSDT" ? 43250 : symbol === "ETHUSDT" ? 2580 : symbol === "SOLUSDT" ? 98.5 : 0.485
-
-      const asks = Array.from({ length: 25 }, (_, i) => [
-        (basePrice * (1 + (i + 1) * 0.0001)).toString(),
-        (Math.random() * 10).toString(),
-      ])
-
-      const bids = Array.from({ length: 25 }, (_, i) => [
-        (basePrice * (1 - (i + 1) * 0.0001)).toString(),
-        (Math.random() * 10).toString(),
-      ])
-
-      callback({
-        topic: `orderbook.25.${symbol}`,
-        data: {
-          s: symbol,
-          a: asks,
-          b: bids,
-          u: Date.now(),
-          seq: Date.now(),
-        },
-      })
+  subscribeToOrderbook(symbol: string, callback: (data: any) => void) {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `${SERVER_URL}/api/orderbook?symbol=${symbol}&category=linear&limit=25`,
+        )
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.result) {
+          callback({ topic: `orderbook.25.${symbol}`, data: data.result })
+        }
+      } catch (error) {
+        console.error('Error fetching orderbook:', error)
+      }
     }, 1000)
 
     return () => clearInterval(interval)
   }
 
-  setSimulationMode(enabled: boolean) {
-    this.isSimulation = enabled
-    if (!enabled && this.config.apiKey && this.config.apiSecret) {
+  subscribeToKlines(
+    symbol: string,
+    interval: string,
+    callback: (data: any) => void,
+  ) {
+
+    if (!this.wsClient) {
       this.initializeClients()
-    } else if (enabled) {
-      // when switching back to simulation, clean up live clients
-      try {
-        this.wsClient?.closeAll?.()
-      } catch (e) {
-        console.warn("Failed to close websocket client", e)
+    }
+
+    const topic = `kline.${interval}.${symbol}`
+    const handler = (event: any) => {
+      if (event.topic === topic && event.data) {
+        const d = Array.isArray(event.data) ? event.data[0] : event.data
+        callback({
+          start: Number(d.start),
+          open: Number(d.open),
+          high: Number(d.high),
+          low: Number(d.low),
+          close: Number(d.close),
+          volume: Number(d.volume),
+        })
       }
-      this.wsClient = null
-      this.restClient = null
+    }
+
+    this.wsClient?.on('update', handler)
+    this.wsClient?.subscribeV5(topic, 'linear')
+
+    return () => {
+      try {
+        this.wsClient?.unsubscribeV5(topic, 'linear')
+      } catch (err) {
+        console.warn('Failed to unsubscribe klines', err)
+      }
+      this.wsClient?.off('update', handler)
     }
   }
 
-  isSimulationMode() {
-    return this.isSimulation
-  }
 }
 
 // Global instance
