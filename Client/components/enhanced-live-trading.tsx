@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useTradingStore } from "@/lib/trading-store"
 import { bybitService } from "@/lib/bybit-client"
-import { EnhancedTradingChart } from "@/components/enhanced-trading-chart"
+import { WebsocketCandlestickChart } from "@/components/websocket-candlestick-chart"
 import { RealTimeOrderBook } from "@/components/real-time-order-book"
 import { EnhancedPositionManager } from "@/components/enhanced-position-manager"
-import { TrendingUp, TrendingDown, AlertTriangle, Wifi, WifiOff } from "lucide-react"
+import { TrendingUp, TrendingDown, AlertTriangle, Wifi, WifiOff, BarChart3 } from "lucide-react"
 
 const SUPPORTED_SYMBOLS = [
   { symbol: "BTCUSDT", name: "Bitcoin" },
@@ -47,6 +47,9 @@ export function EnhancedLiveTrading() {
   const [leverage, setLeverage] = useState("1")
   const [positionType, setPositionType] = useState<"long" | "short">("long")
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
+  const [timeframe, setTimeframe] = useState<
+    "1m" | "5m" | "15m" | "1h" | "4h" | "1d"
+  >("1m")
 
   // Subscribe to real-time data
   useEffect(() => {
@@ -214,9 +217,43 @@ export function EnhancedLiveTrading() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Enhanced Chart */}
+        {/* Candlestick Chart */}
         <div className="xl:col-span-3">
-          <EnhancedTradingChart symbol={selectedSymbol} />
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center space-x-2">
+                  <BarChart3 className="w-5 h-5" />
+                  <span>{selectedSymbol} Perpetual</span>
+                </CardTitle>
+                <div className="flex space-x-2">
+                  {[
+                    "1m",
+                    "5m",
+                    "15m",
+                    "1h",
+                    "4h",
+                    "1d",
+                  ].map((tf) => (
+                    <Button
+                      key={tf}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTimeframe(tf as any)}
+                    >
+                      {tf}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <WebsocketCandlestickChart
+                symbol={selectedSymbol}
+                timeframe={timeframe}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Enhanced Order Panel */}
