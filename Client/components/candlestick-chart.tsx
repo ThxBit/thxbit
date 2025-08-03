@@ -110,7 +110,7 @@ export function CandlestickChart({ data, width = 600, height = 300 }: Props) {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      setZoom((z) => Math.min(3, Math.max(0.5, z - e.deltaY * 0.001)))
+      setZoom((z) => Math.min(100, Math.max(0.5, z - e.deltaY * 0.005)))
     }
     const onMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
